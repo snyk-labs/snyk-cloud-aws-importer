@@ -1,0 +1,14 @@
+account_access_role: OrganizationAccountAccessRole
+deployment_region: us-east-1
+account_org_mapping_rules:
+  - org_id: 56564ed1-091c-43b6-8c17-9cfe8298fab5
+    match_type: ALL
+    filter:
+      account_ids: ["364033979709"]
+  - org_id: 234224ed1-091c-43b6-8c17-9cfe8298fab5
+    match_type: ALL
+    filter:
+      email_regexes: [".*dev.*"]
+      name_regexes: [".*dev.*"]
+  - org_id: 234224ed1-091c-43b6-8c17-9cfe8298fab5
+    match_type: DEFAULT
