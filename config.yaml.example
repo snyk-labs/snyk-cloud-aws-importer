@@ -1,4 +1,5 @@
 account_access_role: OrganizationAccountAccessRole
+organizations_master_account_id: "123123123123"
 deployment_region: us-east-1
 account_org_mapping_rules:
   - org_id: 56564ed1-091c-43b6-8c17-9cfe8298fab5

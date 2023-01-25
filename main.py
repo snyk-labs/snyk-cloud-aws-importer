@@ -15,7 +15,7 @@ logger.setLevel(logging.DEBUG)
 
 # Temp: Print to stdout
 handler = logging.StreamHandler(sys.stdout)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
@@ -45,7 +45,7 @@ class MappingMatchType(Enum):
 
 
 class AccountFilter:
-    def __init__(self,  account_ids=[], email_regexes=[], name_regexes=[]):
+    def __init__(self, account_ids=[], email_regexes=[], name_regexes=[]):
         self.account_ids = account_ids
         self.email_regexes = email_regexes
         self.name_regexes = name_regexes
@@ -60,7 +60,11 @@ class AccountFilter:
         if len(self.account_ids) == 0:
             logger.debug(f"no account ids specified so returning NOT_APPLICABLE")
             return FilterMatchResult.NOT_APPLICABLE
-        return FilterMatchResult.MATCH if subject.get("Id") in self.account_ids else FilterMatchResult.NO_MATCH
+        return (
+            FilterMatchResult.MATCH
+            if subject.get("Id") in self.account_ids
+            else FilterMatchResult.NO_MATCH
+        )
 
     def email_match(self, subject):
         """
@@ -114,15 +118,20 @@ class MappingRule:
         name_result = self.filter.name_match(subject)
 
         if self.match_type == MappingMatchType.ALL:
-            return id_result != FilterMatchResult.NO_MATCH and email_result != FilterMatchResult.NO_MATCH \
+            return (
+                id_result != FilterMatchResult.NO_MATCH
+                and email_result != FilterMatchResult.NO_MATCH
                 and name_result != FilterMatchResult.NO_MATCH
+            )
         elif self.match_type == MappingMatchType.ANY:
-            return id_result == FilterMatchResult.MATCH or email_result == FilterMatchResult.MATCH \
+            return (
+                id_result == FilterMatchResult.MATCH
+                or email_result == FilterMatchResult.MATCH
                 or name_result == FilterMatchResult.MATCH
+            )
 
 
 class SnykUtilities:
-
     def generate_snyk_cloud_aws_cfn_template(self, org_id):
         """
         Makes a request to the Snyk API to generate a CFN template for deployment to our AWS environment
@@ -133,14 +142,11 @@ class SnykUtilities:
             f"{BASE_URL}orgs/{org_id}/cloud/permissions?version={API_VERSION}",
             headers=HEADERS,
             json={
-              "data": {
-                "attributes": {
-                  "platform": "aws",
-                  "type": "cf"
-                },
-                "type": "permission"
-              }
-            }
+                "data": {
+                    "attributes": {"platform": "aws", "type": "cf"},
+                    "type": "permission",
+                }
+            },
         )
         return response.json()["data"]["attributes"]["data"]
 
@@ -151,22 +157,21 @@ class SnykUtilities:
         :param role_arn: the role arn that was deployed by the script
         :return: True if the status code was 201 (success) False otherwise
         """
+        logger.debug(f"creating snyk cloud env with {org_id} and {role_arn}")
         response = requests.post(
-            f"{BASE_URL}orgs/{org_id}/cloud/permissions?version={API_VERSION}",
+            f"{BASE_URL}orgs/{org_id}/cloud/environments?version={API_VERSION}",
             headers=HEADERS,
             json={
-              "data": {
-                "attributes": {
-                  "kind": "aws",
-                  "options": {
-                    "role_arn": role_arn
-                  }
-                },
-                "type": "environment"
-              }
-            }
+                "data": {
+                    "attributes": {"kind": "aws", "options": {"role_arn": role_arn}},
+                    "type": "environment",
+                }
+            },
         )
+        logger.debug(response.status_code)
+        logger.debug(response.content)
         return response.status_code == 201
+
 
 class AwsUtilities:
     def role_arn_to_session(self, **args):
@@ -175,17 +180,12 @@ class AwsUtilities:
         :param args: args
         :return: A session
         """
-        client = self.get_session().client('sts')
+        client = _get_session().client("sts")
         response = client.assume_role(**args)
         return boto3.Session(
-            aws_access_key_id=response['Credentials']['AccessKeyId'],
-            aws_secret_access_key=response['Credentials']['SecretAccessKey'],
-            aws_session_token=response['Credentials']['SessionToken'])
-
-    def get_session(self):
-        return boto3.Session(
-            aws_access_key_id=AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+            aws_access_key_id=response["Credentials"]["AccessKeyId"],
+            aws_secret_access_key=response["Credentials"]["SecretAccessKey"],
+            aws_session_token=response["Credentials"]["SessionToken"],
         )
 
     def get_accounts_in_organization(self):
@@ -193,13 +193,22 @@ class AwsUtilities:
         Gets a list of ACTIVE accounts within the current AWS organization
         :return: the list of accounts
         """
-        client = self.get_session().client("organizations")
-        paginator = client.get_paginator('list_accounts')
+        client = _get_session().client("organizations")
+        paginator = client.get_paginator("list_accounts")
         accounts = []
         response_iterator = paginator.paginate()
         for page in response_iterator:
-            accounts.extend(page.get('Accounts'))
-        return [x for x in accounts if x.get("Status") == "ACTIVE"]  # No point getting inactive accounts
+            accounts.extend(page.get("Accounts"))
+        return [
+            x for x in accounts if x.get("Status") == "ACTIVE"
+        ]  # No point getting inactive accounts
+
+
+def _get_session():
+    return boto3.Session(
+        aws_access_key_id=AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+    )
 
 
 def _load_config(config_file):
@@ -208,7 +217,7 @@ def _load_config(config_file):
     :param config_file: the file path
     :return: Loaded config
     """
-    with open(config_file, 'r') as fs:
+    with open(config_file, "r") as fs:
         return yaml.safe_load(fs)
 
 
@@ -224,8 +233,11 @@ def _prepare_mapping_rules(mapping_rules):
         if match_type == MappingMatchType.DEFAULT:
             filter = None
         else:
-            filter = AccountFilter(rule["filter"].get("account_ids", []), rule["filter"].get("email_regexes", []),
-                                   rule["filter"].get("name_regexes", []))
+            filter = AccountFilter(
+                rule["filter"].get("account_ids", []),
+                rule["filter"].get("email_regexes", []),
+                rule["filter"].get("name_regexes", []),
+            )
         mapping = MappingRule(filter, rule["org_id"], match_type)
         loaded_mapping_rules.append(mapping)
     logger.debug(f"loaded {len(loaded_mapping_rules)} mapping rules from config")
@@ -240,7 +252,9 @@ def _test_subject(subject, mapping_rules):
     :param mapping_rules: the list of all mapping rules
     :return: True if a match was found, False otherwise
     """
-    logger.debug(f"testing subject against {len(mapping_rules)} mapping rules [subject={subject}]")
+    logger.debug(
+        f"testing subject against {len(mapping_rules)} mapping rules [subject={subject}]"
+    )
     for rule in mapping_rules:
         if rule.is_match(subject):
             logger.debug("found match")
@@ -249,7 +263,7 @@ def _test_subject(subject, mapping_rules):
     return False, None
 
 
-def main(config_file : str = "config.yaml"):
+def main(config_file: str = "config.yaml"):
     # Instantiate the helper classes
     aws = AwsUtilities()
     snyk = SnykUtilities()
@@ -275,29 +289,37 @@ def main(config_file : str = "config.yaml"):
 
         # Assume a role in to the target account and deploy the cfn template
         stack_name = STACK_NAME_TEMPLATE.format(account["Id"])
-        assumed_session = aws.role_arn_to_session(
-            RoleArn=ROLE_ARN_TEMPLATE.format(account["Id"]),
-            RoleSessionName="SnykCloudDeploymentSession")
-        assumed_cfn_client = assumed_session.client("cloudformation", region_name=config.get("deployment_region"))
+        if account["Id"] == config["organizations_master_account_id"]:
+            assumed_session = _get_session()
+        else:
+            assumed_session = aws.role_arn_to_session(
+                RoleArn=ROLE_ARN_TEMPLATE.format(account["Id"]),
+                RoleSessionName="SnykCloudDeploymentSession",
+            )
+        assumed_cfn_client = assumed_session.client(
+            "cloudformation", region_name=config.get("deployment_region")
+        )
         assumed_cfn_client.create_stack(
             StackName=stack_name,
             Parameters=[],
             TemplateBody=template,
-            Capabilities=['CAPABILITY_NAMED_IAM']
+            Capabilities=["CAPABILITY_NAMED_IAM"],
         )
 
         # Wait for the template to finish deploying
-        assumed_cfn_client.get_waiter('stack_create_complete').wait(StackName=stack_name)
+        assumed_cfn_client.get_waiter("stack_create_complete").wait(
+            StackName=stack_name
+        )
 
         # Get the role arn from the stack outputs
         response = assumed_cfn_client.describe_stacks(StackName=stack_name)
-        outputs = response['Stacks'][0]['Outputs']
+        outputs = response["Stacks"][0]["Outputs"]
 
         # Get the variable from the stack outputs
         snyk_cloud_role_arn = None
         for output in outputs:
-            if output['OutputKey'] == "SnykCloudRoleArn":
-                snyk_cloud_role_arn = output['OutputValue']
+            if output["OutputKey"] == "SnykCloudRoleArn":
+                snyk_cloud_role_arn = output["OutputValue"]
                 break
 
         # Now create the environment based on that role arn

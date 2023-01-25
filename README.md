@@ -23,6 +23,7 @@ file which details what each parameter is for and what values it can be set to.
 
 * *account_access_role*: The role which can be assumed **from** the master account in to child accounts. By default 
 AWS set this to `OrganizationAccountAccessRole`, but it may vary.
+* *organizations_master_account_id*: The AWS organizational master account ID (string format!!)
 * *deployment_region*: The region where the tool should deploy the CloudFormation template (the template only deploys
 a role, so this region doesn't impact anything material see: [AWS Global Services](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/#:~:text=Except%20as%20otherwise%20specified%2C%20Global,store%20and%20process%20data%20globally.))
 * *account_org_mapping_rules*: A list of rules which tell the tool which Snyk organisation your AWS environment should be added
