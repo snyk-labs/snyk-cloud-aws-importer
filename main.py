@@ -132,12 +132,29 @@ class MappingRule:
 
 
 class SnykUtilities:
+    def get_onboarded_environments(self, org_id):
+        """
+        Queries the Snyk API to get a list of Cloud environments 
+        that have already been onboarded into Snyk Cloud.
+        :param org_id: the org ID in Snyk
+        :return: List of onboarded accounts
+        """
+        logger.debug(f"Querying Snyk Cloud for existing onboarded AWS Accounts within {org_id}")
+        response =requests.get(
+            f"{BASE_URL}orgs/{org_id}/cloud/environments?version={API_VERSION}&kind=aws&limit=100",
+            headers=HEADERS
+        )
+
+        logger.debug(response.status_code)
+        logger.debug(response.content)
+    
     def generate_snyk_cloud_aws_cfn_template(self, org_id):
         """
         Makes a request to the Snyk API to generate a CFN template for deployment to our AWS environment
         :param org_id: the org ID
         :return: The CloudFormation template in YAML format
         """
+        logger.debug(f"Creating AWS CloudFormation template")
         response = requests.post(
             f"{BASE_URL}orgs/{org_id}/cloud/permissions?version={API_VERSION}",
             headers=HEADERS,
@@ -148,6 +165,7 @@ class SnykUtilities:
                 }
             },
         )
+        logger.debug(f"Request Status Code: {response.status_code}")
         return response.json()["data"]["attributes"]["data"]
 
     def create_snyk_cloud_environment(self, org_id, role_arn):
@@ -157,7 +175,7 @@ class SnykUtilities:
         :param role_arn: the role arn that was deployed by the script
         :return: True if the status code was 201 (success) False otherwise
         """
-        logger.debug(f"creating snyk cloud env with {org_id} and {role_arn}")
+        logger.debug(f"Creating Snyk Cloud Environment with Snyk Org: {org_id} and AWS Role: {role_arn}")
         response = requests.post(
             f"{BASE_URL}orgs/{org_id}/cloud/environments?version={API_VERSION}",
             headers=HEADERS,
@@ -168,8 +186,8 @@ class SnykUtilities:
                 }
             },
         )
-        logger.debug(response.status_code)
-        logger.debug(response.content)
+        logger.debug(f"Request Status Code: {response.status_code}")
+        logger.debug(f"Request Response Content: {response.content}")
         return response.status_code == 201
 
 
