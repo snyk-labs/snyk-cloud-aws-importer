@@ -21,7 +21,7 @@ AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 SNYK_TOKEN = os.getenv("SNYK_TOKEN")
 
 # Constants
-BASE_URL = "https://api.snyk.io/rest/"
+BASE_URL = "https://api.snyk.io/"
 HEADERS = {"Authorization": f"token {SNYK_TOKEN}"}
 API_VERSION = "2023-01-04~beta"
 ROLE_ARN_TEMPLATE = "arn:aws:iam::{}:role/OrganizationAccountAccessRole"
@@ -141,12 +141,24 @@ class SnykUtilities:
         :param org_id: the org ID in Snyk
         :return: List of onboarded accounts
         """
+        onboarded_environments = []
         logger.debug(f"Querying Snyk Cloud for existing onboarded AWS Accounts within {org_id}")
-        response =requests.get(
-            f"{BASE_URL}orgs/{org_id}/cloud/environments?version={API_VERSION}&kind=aws&limit=100",
+
+        # Do the first page of results
+        response = requests.get(
+            f"{BASE_URL}/rest/orgs/{org_id}/cloud/environments?version={API_VERSION}&kind=aws&limit=100",
             headers=HEADERS
         )
-        return [x["attributes"]["native_id"] for x in response.json()["data"]]
+        onboarded_environments.extend([x["attributes"]["native_id"] for x in response.json()["data"]])
+
+        # Go through all the pages until we're done
+        while response.json().get("links", {}).get("next"):
+            response = requests.get(
+                f"{BASE_URL}{response.json()['links'].get('next')}",
+                headers=HEADERS
+            )
+            onboarded_environments.extend([x["attributes"]["native_id"] for x in response.json()["data"]])
+        return onboarded_environments
 
     def generate_snyk_cloud_aws_cfn_template(self, org_id):
         """
@@ -155,7 +167,7 @@ class SnykUtilities:
         :return: The CloudFormation template in YAML format
         """
         response = requests.post(
-            f"{BASE_URL}orgs/{org_id}/cloud/permissions?version={API_VERSION}",
+            f"{BASE_URL}rest/orgs/{org_id}/cloud/permissions?version={API_VERSION}",
             headers=HEADERS,
             json={
                 "data": {
@@ -175,7 +187,7 @@ class SnykUtilities:
         """
         logger.debug(f"creating snyk cloud env with {org_id} and {role_arn}")
         response = requests.post(
-            f"{BASE_URL}orgs/{org_id}/cloud/environments?version={API_VERSION}",
+            f"{BASE_URL}rest/orgs/{org_id}/cloud/environments?version={API_VERSION}",
             headers=HEADERS,
             json={
                 "data": {
