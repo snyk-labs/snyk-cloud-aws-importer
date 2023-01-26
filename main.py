@@ -1,7 +1,7 @@
 import boto3
 import colored
+import fnmatch
 import os
-import re
 import requests
 import typer
 import yaml
@@ -47,10 +47,10 @@ class MappingMatchType(Enum):
 
 
 class AccountFilter:
-    def __init__(self, account_ids=[], email_regexes=[], name_regexes=[]):
+    def __init__(self, account_ids=[], email_patterns=[], name_patterns=[]):
         self.account_ids = account_ids
-        self.email_regexes = email_regexes
-        self.name_regexes = name_regexes
+        self.email_patterns = email_patterns
+        self.name_patterns = name_patterns
 
     def account_id_match(self, subject):
         """
@@ -75,11 +75,11 @@ class AccountFilter:
         :return: MATCH if a match is found, NO_MATCH otherwise or NOT_APPLICABLE if no emails specified
         """
         logger.debug(f"email_match [subject={subject}]")
-        if len(self.email_regexes) == 0:
+        if len(self.email_patterns) == 0:
             logger.debug(f"no emails specified so returning NOT_APPLICABLE")
             return FilterMatchResult.NOT_APPLICABLE
-        for pattern in self.email_regexes:
-            if re.match(pattern, subject.get("Email")):
+        for pattern in self.email_patterns:
+            if fnmatch.fnmatch(subject.get("Email"), pattern):
                 return FilterMatchResult.MATCH
         return FilterMatchResult.NO_MATCH
 
@@ -90,11 +90,11 @@ class AccountFilter:
         :return: MATCH if a match is found, NO_MATCH otherwise or NOT_APPLICABLE if no account names specified
         """
         logger.debug(f"name_match [subject={subject}]")
-        if len(self.name_regexes) == 0:
+        if len(self.name_patterns) == 0:
             logger.debug(f"no names specified so returning NOT_APPLICABLE")
             return FilterMatchResult.NOT_APPLICABLE
-        for pattern in self.name_regexes:
-            if re.match(pattern, subject.get("Name")):
+        for pattern in self.name_patterns:
+            if fnmatch.fnmatch(subject.get("Name"), pattern):
                 return FilterMatchResult.MATCH
         return FilterMatchResult.NO_MATCH
 
@@ -263,8 +263,8 @@ def _prepare_mapping_rules(mapping_rules):
         else:
             filter = AccountFilter(
                 rule["filter"].get("account_ids", []),
-                rule["filter"].get("email_regexes", []),
-                rule["filter"].get("name_regexes", []),
+                rule["filter"].get("email_patterns", []),
+                rule["filter"].get("name_patterns", []),
             )
         mapping = MappingRule(filter, rule["org_id"], match_type)
         loaded_mapping_rules.append(mapping)

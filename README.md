@@ -34,9 +34,9 @@ the rule to be applied and DEFAULT needs no `filter` section, this rule should c
 without any matching.
 * *account_org_mapping_rules.[].filter*: A map (dictionary) defining the filters
 * *account_org_mapping_rules.[].filter.account_ids*: A list of account IDs to check against
-* *account_org_mapping_rules.[].filter.email_regexes* A list of regex patterns. These patterns will be tested against
+* *account_org_mapping_rules.[].filter.email_patterns* A list of patterns to match against (accepts wildcards). These patterns will be tested against
 the email address of the AWS account
-* *account_org_mapping_rules.[].filter.name_regexes*: A list of regex patterns. These patterns will be tested against
+* *account_org_mapping_rules.[].filter.name_patterns*: A list of patterns to match against (accepts wildcards). These patterns will be tested against
 the friendly name of the AWS account
 
 A sample config file which makes use of all available configuration options can be seen in `config.yaml.example`
