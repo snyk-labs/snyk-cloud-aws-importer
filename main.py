@@ -1,4 +1,5 @@
 import boto3
+import colored
 import os
 import re
 import requests
@@ -7,17 +8,12 @@ import yaml
 import logging
 import sys
 
+from colored import stylize
 from enum import Enum
 
 # Set up our logger
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-
-# Temp: Print to stdout
-handler = logging.StreamHandler(sys.stdout)
-formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+logger.setLevel(logging.INFO)
 
 # Secret variables, bring them in from environment
 AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
@@ -30,6 +26,12 @@ HEADERS = {"Authorization": f"token {SNYK_TOKEN}"}
 API_VERSION = "2023-01-04~beta"
 ROLE_ARN_TEMPLATE = "arn:aws:iam::{}:role/OrganizationAccountAccessRole"
 STACK_NAME_TEMPLATE = "SnykCloudOnboarding-{}"
+
+# Constants for coloured output
+STYLE_INFO = colored.fg("blue") + colored.attr("bold")
+STYLE_ERR = colored.fg("red") + colored.attr("bold")
+STYLE_WARN = colored.fg("yellow") + colored.attr("bold")
+STYLE_SUCCESS = colored.fg("green") + colored.attr("bold")
 
 
 class FilterMatchResult(Enum):
@@ -132,9 +134,9 @@ class MappingRule:
 
 
 class SnykUtilities:
-    def get_onboarded_environments(self, org_id):
+    def get_onboarded_account_ids(self, org_id):
         """
-        Queries the Snyk API to get a list of Cloud environments 
+        Queries the Snyk API to get a list of Cloud environments
         that have already been onboarded into Snyk Cloud.
         :param org_id: the org ID in Snyk
         :return: List of onboarded accounts
@@ -144,17 +146,14 @@ class SnykUtilities:
             f"{BASE_URL}orgs/{org_id}/cloud/environments?version={API_VERSION}&kind=aws&limit=100",
             headers=HEADERS
         )
+        return [x["attributes"]["native_id"] for x in response.json()["data"]]
 
-        logger.debug(response.status_code)
-        logger.debug(response.content)
-    
     def generate_snyk_cloud_aws_cfn_template(self, org_id):
         """
         Makes a request to the Snyk API to generate a CFN template for deployment to our AWS environment
         :param org_id: the org ID
         :return: The CloudFormation template in YAML format
         """
-        logger.debug(f"Creating AWS CloudFormation template")
         response = requests.post(
             f"{BASE_URL}orgs/{org_id}/cloud/permissions?version={API_VERSION}",
             headers=HEADERS,
@@ -165,7 +164,6 @@ class SnykUtilities:
                 }
             },
         )
-        logger.debug(f"Request Status Code: {response.status_code}")
         return response.json()["data"]["attributes"]["data"]
 
     def create_snyk_cloud_environment(self, org_id, role_arn):
@@ -175,7 +173,7 @@ class SnykUtilities:
         :param role_arn: the role arn that was deployed by the script
         :return: True if the status code was 201 (success) False otherwise
         """
-        logger.debug(f"Creating Snyk Cloud Environment with Snyk Org: {org_id} and AWS Role: {role_arn}")
+        logger.debug(f"creating snyk cloud env with {org_id} and {role_arn}")
         response = requests.post(
             f"{BASE_URL}orgs/{org_id}/cloud/environments?version={API_VERSION}",
             headers=HEADERS,
@@ -186,8 +184,8 @@ class SnykUtilities:
                 }
             },
         )
-        logger.debug(f"Request Status Code: {response.status_code}")
-        logger.debug(f"Request Response Content: {response.content}")
+        logger.debug(response.status_code)
+        logger.debug(response.content)
         return response.status_code == 201
 
 
@@ -281,26 +279,65 @@ def _test_subject(subject, mapping_rules):
     return False, None
 
 
-def main(config_file: str = "config.yaml"):
+def main(config_file: str = "config.yaml", debug: bool = False, ignore_existing: bool = False):
+    # Print log to stdout and set level to debug if the user asks for it
+    if debug:
+        logger.setLevel(logging.DEBUG)
+        handler = logging.StreamHandler(sys.stdout)
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+
     # Instantiate the helper classes
     aws = AwsUtilities()
     snyk = SnykUtilities()
 
     # Load our config file and parse it
-    logger.info("loading config...")
     config = _load_config(config_file)
     mapping_rules = _prepare_mapping_rules(config["account_org_mapping_rules"])
+    print(stylize("Config file successfully loaded...", STYLE_SUCCESS))
 
     # Pull down a list of accounts and then filter them based on our rules
+    print("Attempting to grab list of accounts from AWS...")
     master_account_list = aws.get_accounts_in_organization()
+    print(stylize(f"Found {len(master_account_list)} accounts...", STYLE_SUCCESS))
 
     # Go through each account and set it up in Snyk, then deploy the cfn template
     for account in master_account_list:
+        print(stylize(f"[{account['Id']}] ", STYLE_INFO) + "processing account")
         match_found, matched_rule = _test_subject(account, mapping_rules)
+        existing_environments = snyk.get_onboarded_account_ids(matched_rule.org_id)
+
+        # If there's a Snyk Cloud environment for this account already, skip it
+        if account["Id"] in existing_environments and not ignore_existing:
+            print(
+                stylize(f"[{account['Id']}] ", STYLE_INFO)
+                + stylize(
+                    f"Error: Account already onboarded to Snyk Cloud (run with --ignore-existing to override)",
+                    STYLE_ERR,
+                )
+            )
+            continue
 
         # No need to process further if no match is found
         if not match_found:
+            print(
+                stylize(f"[{account['Id']}] ", STYLE_INFO)
+                + stylize(
+                    f"Warning: No match found for account {account['Id']} - you may need to update your filter rules",
+                    STYLE_WARN,
+                )
+            )
             continue
+        else:
+            print(
+                stylize(f"[{account['Id']}] ", STYLE_INFO)
+                + stylize(
+                    f"found match - mapped to org {matched_rule.org_id}", STYLE_SUCCESS
+                )
+            )
 
         # Create a cloudformation template to deploy in to this account
         template = snyk.generate_snyk_cloud_aws_cfn_template(matched_rule.org_id)
@@ -308,11 +345,22 @@ def main(config_file: str = "config.yaml"):
         # Assume a role in to the target account and deploy the cfn template
         stack_name = STACK_NAME_TEMPLATE.format(account["Id"])
         if account["Id"] == config["organizations_master_account_id"]:
+            print(
+                stylize(f"[{account['Id']}] ", STYLE_INFO)
+                + stylize(
+                    "Deploying in master account, skipping role assumption...",
+                    STYLE_WARN,
+                )
+            )
             assumed_session = _get_session()
         else:
             assumed_session = aws.role_arn_to_session(
                 RoleArn=ROLE_ARN_TEMPLATE.format(account["Id"]),
                 RoleSessionName="SnykCloudDeploymentSession",
+            )
+            print(
+                stylize(f"[{account['Id']}] ", STYLE_INFO)
+                + f"Assumed role in target account {account['Id']}"
             )
         assumed_cfn_client = assumed_session.client(
             "cloudformation", region_name=config.get("deployment_region")
@@ -323,6 +371,10 @@ def main(config_file: str = "config.yaml"):
             TemplateBody=template,
             Capabilities=["CAPABILITY_NAMED_IAM"],
         )
+        print(
+            stylize(f"[{account['Id']}] ", STYLE_INFO)
+            + f"Created stack {stack_name} in account {account['Id']} - waiting for completion..."
+        )
 
         # Wait for the template to finish deploying
         assumed_cfn_client.get_waiter("stack_create_complete").wait(
@@ -330,6 +382,10 @@ def main(config_file: str = "config.yaml"):
         )
 
         # Get the role arn from the stack outputs
+        print(
+            stylize(f"[{account['Id']}] ", STYLE_INFO)
+            + stylize(f"Stack creation finished...", STYLE_SUCCESS)
+        )
         response = assumed_cfn_client.describe_stacks(StackName=stack_name)
         outputs = response["Stacks"][0]["Outputs"]
 
@@ -341,8 +397,16 @@ def main(config_file: str = "config.yaml"):
                 break
 
         # Now create the environment based on that role arn
+        print(
+            stylize(f"[{account['Id']}] ", STYLE_INFO)
+            + f"Found Snyk role {snyk_cloud_role_arn} in stack outputs, deploying Snyk Cloud environment..."
+        )
         if snyk_cloud_role_arn:
             snyk.create_snyk_cloud_environment(matched_rule.org_id, snyk_cloud_role_arn)
+            print(
+                stylize(f"[{account['Id']}] ", STYLE_INFO)
+                + stylize(f"...done", STYLE_SUCCESS)
+            )
 
 
 if __name__ == "__main__":
