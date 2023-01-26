@@ -134,6 +134,20 @@ class MappingRule:
 
 
 class SnykUtilities:
+    def get_onboarded_account_ids(self, org_id):
+        """
+        Queries the Snyk API to get a list of Cloud environments
+        that have already been onboarded into Snyk Cloud.
+        :param org_id: the org ID in Snyk
+        :return: List of onboarded accounts
+        """
+        logger.debug(f"Querying Snyk Cloud for existing onboarded AWS Accounts within {org_id}")
+        response =requests.get(
+            f"{BASE_URL}orgs/{org_id}/cloud/environments?version={API_VERSION}&kind=aws&limit=100",
+            headers=HEADERS
+        )
+        return [x["attributes"]["native_id"] for x in response.json()["data"]]
+
     def generate_snyk_cloud_aws_cfn_template(self, org_id):
         """
         Makes a request to the Snyk API to generate a CFN template for deployment to our AWS environment
@@ -265,7 +279,7 @@ def _test_subject(subject, mapping_rules):
     return False, None
 
 
-def main(config_file: str = "config.yaml", debug: bool = False):
+def main(config_file: str = "config.yaml", debug: bool = False, ignore_existing: bool = False):
     # Print log to stdout and set level to debug if the user asks for it
     if debug:
         logger.setLevel(logging.DEBUG)
@@ -294,6 +308,18 @@ def main(config_file: str = "config.yaml", debug: bool = False):
     for account in master_account_list:
         print(stylize(f"[{account['Id']}] ", STYLE_INFO) + "processing account")
         match_found, matched_rule = _test_subject(account, mapping_rules)
+        existing_environments = snyk.get_onboarded_account_ids(matched_rule.org_id)
+
+        # If there's a Snyk Cloud environment for this account already, skip it
+        if account["Id"] in existing_environments and not ignore_existing:
+            print(
+                stylize(f"[{account['Id']}] ", STYLE_INFO)
+                + stylize(
+                    f"Error: Account already onboarded to Snyk Cloud (run with --ignore-existing to override)",
+                    STYLE_ERR,
+                )
+            )
+            continue
 
         # No need to process further if no match is found
         if not match_found:
