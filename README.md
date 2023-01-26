@@ -51,13 +51,22 @@ export SNYK_TOKEN=...
 export AWS_ACCESS_KEY_ID=...
 export AWS_SECRET_ACCESS_KEY=...
 ```
-### Run the tool
+
+### Dry-Run
+The default behaviour of the tool is to run in dry run mode. This will print the AWS accounts that are detected and would be created. When you are ready to start onboarding Snyk Cloud Environments, append `--no-dry-run`. See below for examples.
+
+### Run the tool (Dry Run Mode)
 ```bash
 python main.py --config-file config.yaml
+```
+
+### Run the tool ()
+```bash
+python main.py --config-file config.yaml --no-dry-run
 ```
 
 ### Check results
 In Snyk:
 * Click on the settings icon for your organisation
-* Click "Cloud environments" in the left hand menu bar
-* Check to ensure the cloud environments you were expecting to be imported, have been
+* Click "Cloud Environments" in the left hand menu bar
+* Check to ensure the cloud environments you were expecting to be imported, have been. These will also show as "Scanning".
