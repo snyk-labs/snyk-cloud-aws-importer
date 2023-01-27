@@ -6,5 +6,5 @@
 # Zip up the package dependencies 
  zip -r aws-account-monitor.zip ./package
 
-# Add the main lambda code to the Zip file
- zip aws-account-monitor.zip main.py
+# Add config and the main lambda code to the Zip file
+ zip aws-account-monitor.zip main.py config.yaml
