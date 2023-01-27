@@ -24,7 +24,7 @@ SNYK_TOKEN = os.getenv("SNYK_TOKEN")
 BASE_URL = "https://api.snyk.io/"
 HEADERS = {"Authorization": f"token {SNYK_TOKEN}"}
 API_VERSION = "2023-01-04~beta"
-ROLE_ARN_TEMPLATE = "arn:aws:iam::{}:role/OrganizationAccountAccessRole"
+ROLE_ARN_TEMPLATE = "arn:aws:iam::{}:role/{}"
 STACK_NAME_TEMPLATE = "SnykCloudOnboarding-{}"
 
 # Constants for coloured output
@@ -381,7 +381,7 @@ def main(
                         assumed_session = _get_session()
                     else:
                         assumed_session = aws.role_arn_to_session(
-                            RoleArn=ROLE_ARN_TEMPLATE.format(account["Id"]),
+                            RoleArn=ROLE_ARN_TEMPLATE.format(account["Id"], config["account_access_role"]),
                             RoleSessionName="SnykCloudDeploymentSession",
                         )
                         print(
