@@ -1,0 +1,29 @@
+{
+  "eventVersion": "1.05",
+  "userIdentity": {
+    "accountId": "111122223333",
+    "invokedBy": "..."
+  },
+  "eventTime": "2020-09-16T21:20:53Z",
+  "eventSource": "organizations.amazonaws.com",
+  "eventName": "CreateAccountResult",
+  "awsRegion": "us-east-1",
+  "sourceIPAddress": "192.0.2.0",
+  "userAgent": "....",
+  "requestParameters": null,
+  "responseElements": null,
+  "eventID": "EXAMPLE8-90ab-cdef-fedc-ba987EXAMPLE",
+  "readOnly": false,
+  "eventType": "AwsServiceEvent",
+  "recipientAccountId": "111122223333",
+  "serviceEventDetails": {
+    "createAccountStatus": {
+      "id": "car-examplecreateaccountrequestid111",
+      "state": "SUCCEEDED",
+      "accountName": "****",
+      "accountId": "444455556666",
+      "requestedTimestamp": "Sep 16, 2020 9:20:50 PM",
+      "completedTimestamp": "Sep 16, 2020 9:20:53 PM"
+    }
+  }
+}
