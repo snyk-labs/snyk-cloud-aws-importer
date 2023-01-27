@@ -1,0 +1,75 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation to Deploy AWS Account Monitor lambda function.
+Parameters:
+  LambdaName:
+    Type: String
+    Description: Name of Lambda function to create.
+    AllowedPattern: '^.*[^0-9]$'
+  SnykAPIToken:
+    Type: String
+    Description: API Token of Service Account / PAT from Snyk
+Resources:
+  rSnykAPISecret:
+    Type: 'AWS::SecretsManager::Secret'
+    Properties:
+      Description: Snyk API Token
+      Name: snyk/account_monitor/credential1
+      SecretString: 'Fn::Sub ${SnykAPIToken}'
+  rAccountEvents:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: CloudWatch Rule to Trigger Snyk AWS Account Monitor Lambda
+      Name: SnykCloudAWSMonitorEvents
+      EventPattern:
+        detail-type:
+          - AWS API Call via CloudTrail
+        detail:
+          eventSource:
+            - 'controltower.amazonaws.com'
+            - 'organizations.amazonaws.com'
+          eventName:
+            - 'CreateAccountResult'
+            - 'CreateManagedAccount'
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt rLambdaFunction.Arn
+          Id: "NewAccountEventLambda"
+  rPermissionForEventsToInvokeLambda:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt rLambdaFunction.Arn
+      Action: 'lambda:InvokeFunction'
+      Principal: 'events.amazonaws.com'
+      SourceArn: !GetAtt rAccountEvents.Arn
+  rLambdaRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: SnykCloudAWSMonitor
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - 'sts:AssumeRole'
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AdministratorAccess'
+      Path: /
+  rLambdaFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName:
+        'Fn::Sub': '${LambdaName}'
+      Description: Snyk Cloud AWS Account Monitor Function
+      Runtime: python3.9
+      Code:
+        S3Bucket: aws-account-monitor
+        S3Key: aws-account-monitor.zip
+      Handler: main.lambda_handler
+      MemorySize: 128
+      Timeout: 60
+      Role:
+        'Fn::GetAtt':
+          - rLambdaRole
+          - Arn
