@@ -53,7 +53,7 @@ export AWS_SECRET_ACCESS_KEY=...
 ```
 
 ### Run the tool (Dry Run Mode)
-The default behaviour of the script is to run in dry run mode. This will print the AWS accounts that are detected and would be created. When you are ready to start onboarding Snyk Cloud Environments, append `--no-dry-run`. See below for examples.
+The default behaviour of the script is to run in dry run mode. This will print the AWS accounts that are detected and which Snyk orgs they would be mapped to. When you are ready to start onboarding Snyk Cloud Environments, append `--no-dry-run`. See below for examples.
 
 ```bash
 python main.py --config-file config.yaml
