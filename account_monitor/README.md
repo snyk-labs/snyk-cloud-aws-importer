@@ -26,3 +26,18 @@ without any matching.
 the email address of the AWS account
 * *account_org_mapping_rules.[].filter.name_patterns*: A list of patterns to match against (accepts wildcards). These patterns will be tested against
 the friendly name of the AWS account
+
+### Building AWS Lambda Package
+Before the CloudFormation template can be deployed, we must build the Lambda package so that it can be deployed to AWS. To do this navigate to the `lambda` directory and ensure the the `build_lambda.sh` file ie executable:
+
+```bash
+chmod u+x build_lambda.sh
+```
+
+Once the file is executable, you can build the Lambda package simply by running the following command:
+
+```bash
+./build_lambda.sh
+```
+
+This will create a new file in your current working directory called `aws-account-monitor.zip`. This file can now be uploaded to a public S3 bucket or if you prefer to host this in a private bucket.
