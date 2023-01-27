@@ -13,7 +13,7 @@ Resources:
     Type: 'AWS::SecretsManager::Secret'
     Properties:
       Description: Snyk API Token
-      Name: snyk/account_monitor/credential1
+      Name: snyk/account_monitor/credentials
       SecretString: 'Fn::Sub ${SnykAPIToken}'
   rAccountEvents:
     Type: 'AWS::Events::Rule'
