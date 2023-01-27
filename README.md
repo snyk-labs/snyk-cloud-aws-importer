@@ -30,7 +30,7 @@
 <br />
 <div align="center">
   <a href="https://github.com/snyk-labs/snyk-cloud-aws-importer">
-    <img src="images/snyk_cloud.png" alt="Logo" width="80" height="80">
+    <img src="images/snyk_cloud.png" alt="Logo" width="102" height="65">
   </a>
 
 <h3 align="center">Snyk Cloud - AWS Onboarding Toolkit</h3>
