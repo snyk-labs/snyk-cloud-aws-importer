@@ -16,18 +16,17 @@ jobs:
         with:
           python-version: 3.9
 
-      - name: Move to directory
-        run: cd account_onboarder
-
       - name: Install Poetry
         run: curl -sSL https://install.python-poetry.org | python3 -
 
       - name: Install dependencies
+        working-directory: ./account_onboarder
         run: $HOME/.local/bin/poetry install -v
         env:
           POETRY_VIRTUALENVS_IN_PROJECT: true
 
       - name: Run pytest
+        working-directory: ./account_onboarder
         run: |
           source .venv/bin/activate
           $HOME/.local/bin/poetry run pytest
