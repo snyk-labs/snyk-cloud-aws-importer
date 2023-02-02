@@ -17,7 +17,6 @@ import fnmatch
 import json
 import logging
 import os
-import json
 from enum import Enum
 
 import boto3
@@ -219,10 +218,7 @@ def get_snyk_token_secret():
 
 def get_account_monitor_config():
     client = boto3.client("ssm")
-    response = client.get_parameter(
-        Name=SSM_CONFIG_NAME,
-        WithDecryption=True | False
-    )
+    response = client.get_parameter(Name=SSM_CONFIG_NAME)
     return response["Parameter"]["Value"]
 
 
