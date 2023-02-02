@@ -1,12 +1,12 @@
-import boto3
 import fnmatch
 import json
 import logging
 import os
-import requests
-import yaml
-
+import json
 from enum import Enum
+
+import boto3
+import requests
 
 # Set up our logger
 logger = logging.getLogger(__name__)
@@ -15,12 +15,13 @@ logger.setLevel(logging.INFO)
 # Constants
 CT_EVENT_ORGANIZATIONS = "CreateAccountResult"
 CT_EVENT_CONTROLTOWER = "CreateManagedAccount"
-SECRET_SNYK_ACCOUNT_MONITOR = "snyk/account_monitor/credentials"
+SECRET_SNYK_ACCOUNT_MONITOR = os.getenv("SNYK_TOKEN_SECRET")
 ROLE_ARN_TEMPLATE = "arn:aws:iam::{}:role/{}"
 BASE_URL = "https://api.snyk.io/"
 API_VERSION = "2023-01-04~beta"
 STACK_NAME_TEMPLATE = "SnykCloudOnboarding-{}"
-CONFIG_FILE = "config.yaml"
+SSM_CONFIG_NAME = os.getenv("SSM_CONFIG_NAME")
+
 
 class FilterMatchResult(Enum):
     MATCH = 1
@@ -167,6 +168,7 @@ class SnykUtilities:
         logger.debug(response.content)
         return response.status_code == 201
 
+
 class AwsUtilities:
     def role_arn_to_session(self, **args):
         """
@@ -184,30 +186,39 @@ class AwsUtilities:
 
     def describe_account(self, account_id):
         client = boto3.client("organizations")
-        response = client.describe_account(
-            AccountId=account_id
-        )
+        response = client.describe_account(AccountId=account_id)
         return response["Account"]
+
 
 def get_snyk_token_secret():
     """
     Grabs the Snyk token from Secrets Maneger
     :return:
     """
-    client = boto3.client('secretsmanager')
+    client = boto3.client("secretsmanager")
     response = client.get_secret_value(SecretId=SECRET_SNYK_ACCOUNT_MONITOR)
-    secret_value = response['SecretString']
-    token = json.loads(secret_value)['token']
+    secret_value = response["SecretString"]
+    token = json.loads(secret_value)["token"]
     return token
 
-def _load_config(config_file):
+
+def get_account_monitor_config():
+    client = boto3.client("ssm")
+    response = client.get_parameter(
+        Name=SSM_CONFIG_NAME,
+        WithDecryption=True | False
+    )
+    return response["Parameter"]["Value"]
+
+
+def _load_config():
     """
     Loads the specified yaml file
     :param config_file: the file path
     :return: Loaded config
     """
-    with open(config_file, "r") as fs:
-        return yaml.safe_load(fs)
+    config_str = get_account_monitor_config()
+    return json.loads(config_str)
 
 
 def _prepare_mapping_rules(mapping_rules):
@@ -251,24 +262,29 @@ def _test_subject(subject, mapping_rules):
     logger.debug("no match found")
     return False, None
 
+
 def lambda_handler(event, context):
     # Instantiate the helpers
     snyk = SnykUtilities(get_snyk_token_secret())
     aws = AwsUtilities()
 
     # Load config and mapping rules
-    config = _load_config(CONFIG_FILE)
+    config = _load_config()
     mapping_rules = _prepare_mapping_rules(config["account_org_mapping_rules"])
 
     # Find which default role to use based on the type of event we receive
     if event["detail"]["eventName"] == CT_EVENT_CONTROLTOWER:
         logger.info("Detected ControlTower event source")
         role = "AWSControlTowerExecution"
-        account_id = event["detail"]["serviceEventDetails"]["createManagedAccountStatus"]["account"]["accountId"]
+        account_id = event["detail"]["serviceEventDetails"][
+            "createManagedAccountStatus"
+        ]["account"]["accountId"]
     elif event["detail"]["eventName"] == CT_EVENT_ORGANIZATIONS:
         logger.info("Detected Organizations event source")
         role = "OrganizationAccountAccessRole"
-        account_id = event["detail"]["serviceEventDetails"]["createAccountStatus"]["accountId"]
+        account_id = event["detail"]["serviceEventDetails"]["createAccountStatus"][
+            "accountId"
+        ]
     account_details = aws.describe_account(account_id)
 
     # Let's see if we can find a match for the created account
@@ -284,9 +300,7 @@ def lambda_handler(event, context):
 
         # Create a cloudformation template to deploy in to this account
         logger.info("Generating Snyk Cloud deployment template")
-        template = snyk.generate_snyk_cloud_aws_cfn_template(
-            matched_rule.org_id
-        )
+        template = snyk.generate_snyk_cloud_aws_cfn_template(matched_rule.org_id)
 
         # Assume a role in to the target account and deploy the cfn template
         stack_name = STACK_NAME_TEMPLATE.format(account_id)
@@ -320,9 +334,7 @@ def lambda_handler(event, context):
         # Now create the environment based on that role arn
         if snyk_cloud_role_arn:
             logger.info("Creating Snyk Cloud environment...")
-            snyk.create_snyk_cloud_environment(
-                matched_rule.org_id, snyk_cloud_role_arn
-            )
+            snyk.create_snyk_cloud_environment(matched_rule.org_id, snyk_cloud_role_arn)
             logger.info("..done")
     else:
         logger.warning(f"No match found for account {account_id}")
