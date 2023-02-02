@@ -23,6 +23,7 @@
 [![Stargazers][stars-shield]][stars-url]
 [![Issues][issues-shield]][issues-url]
 [![Apache License][license-shield]][license-url]
+[![Build and Deploy](https://github.com/snyk-labs/snyk-cloud-aws-importer/actions/workflows/snyk.yml/badge.svg?branch=master)](https://github.com/snyk-labs/snyk-cloud-aws-importer/actions/workflows/snyk.yml)
 
 
 
