@@ -27,7 +27,7 @@ jobs:
 
       - name: Run pytest
         run: |
-          source .venv/bin/activate
+          $HOME/.local/bin/poetry shell
           $HOME/.local/bin/poetry run pytest
   snyk:
     runs-on: ubuntu-latest
