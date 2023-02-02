@@ -7,13 +7,14 @@ Snyk. It also allows you to filter based on account attributes and based on thes
 organisation to place this AWS environment in.
 
 ## Pre-requsites
-* Python3 & pip installed on the machine where the script will run
+* Python3 & Poetry installed on the machine where the script will run
 * Access to your AWS organizational master account (via access keys)
 
 ## Quick start
 ### Install Python requiements
 ```bash
-pip install -r requirements.txt
+poetry shell
+poetry install
 ```
 
 ### Setting up your config.yaml file

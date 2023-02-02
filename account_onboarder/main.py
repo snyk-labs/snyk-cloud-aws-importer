@@ -1,15 +1,15 @@
+import fnmatch
+import logging
+import os
+import sys
+from enum import Enum
+
 import boto3
 import colored
-import fnmatch
-import os
 import requests
 import typer
 import yaml
-import logging
-import sys
-
 from colored import stylize
-from enum import Enum
 
 # Set up our logger
 logger = logging.getLogger(__name__)
@@ -381,7 +381,9 @@ def main(
                         assumed_session = _get_session()
                     else:
                         assumed_session = aws.role_arn_to_session(
-                            RoleArn=ROLE_ARN_TEMPLATE.format(account["Id"], config["account_access_role"]),
+                            RoleArn=ROLE_ARN_TEMPLATE.format(
+                                account["Id"], config["account_access_role"]
+                            ),
                             RoleSessionName="SnykCloudDeploymentSession",
                         )
                         print(
