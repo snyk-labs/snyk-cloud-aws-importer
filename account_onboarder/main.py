@@ -26,6 +26,7 @@ import typer
 import yaml
 from colored import stylize
 
+
 # Set up our logger
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -77,11 +78,7 @@ class AccountFilter:
         if len(self.account_ids) == 0:
             logger.debug(f"no account ids specified so returning NOT_APPLICABLE")
             return FilterMatchResult.NOT_APPLICABLE
-        return (
-            FilterMatchResult.MATCH
-            if subject.get("Id") in self.account_ids
-            else FilterMatchResult.NO_MATCH
-        )
+        return FilterMatchResult.MATCH if subject.get("Id") in self.account_ids else FilterMatchResult.NO_MATCH
 
     def email_match(self, subject):
         """
@@ -158,27 +155,19 @@ class SnykUtilities:
         :return: List of onboarded accounts
         """
         onboarded_environments = []
-        logger.debug(
-            f"Querying Snyk Cloud for existing onboarded AWS Accounts within {org_id}"
-        )
+        logger.debug(f"Querying Snyk Cloud for existing onboarded AWS Accounts within {org_id}")
 
         # Do the first page of results
         response = requests.get(
             f"{BASE_URL}/rest/orgs/{org_id}/cloud/environments?version={API_VERSION}&kind=aws&limit=100",
             headers=HEADERS,
         )
-        onboarded_environments.extend(
-            [x["attributes"]["native_id"] for x in response.json()["data"]]
-        )
+        onboarded_environments.extend([x["attributes"]["native_id"] for x in response.json()["data"]])
 
         # Go through all the pages until we're done
         while response.json().get("links", {}).get("next"):
-            response = requests.get(
-                f"{BASE_URL}{response.json()['links'].get('next')}", headers=HEADERS
-            )
-            onboarded_environments.extend(
-                [x["attributes"]["native_id"] for x in response.json()["data"]]
-            )
+            response = requests.get(f"{BASE_URL}{response.json()['links'].get('next')}", headers=HEADERS)
+            onboarded_environments.extend([x["attributes"]["native_id"] for x in response.json()["data"]])
         return onboarded_environments
 
     def generate_snyk_cloud_aws_cfn_template(self, org_id):
@@ -248,9 +237,7 @@ class AwsUtilities:
         response_iterator = paginator.paginate()
         for page in response_iterator:
             accounts.extend(page.get("Accounts"))
-        return [
-            x for x in accounts if x.get("Status") == "ACTIVE"
-        ]  # No point getting inactive accounts
+        return [x for x in accounts if x.get("Status") == "ACTIVE"]  # No point getting inactive accounts
 
 
 def _get_session():
@@ -301,9 +288,7 @@ def _test_subject(subject, mapping_rules):
     :param mapping_rules: the list of all mapping rules
     :return: True if a match was found, False otherwise
     """
-    logger.debug(
-        f"testing subject against {len(mapping_rules)} mapping rules [subject={subject}]"
-    )
+    logger.debug(f"testing subject against {len(mapping_rules)} mapping rules [subject={subject}]")
     for rule in mapping_rules:
         if rule.is_match(subject):
             logger.debug("found match")
@@ -322,9 +307,7 @@ def main(
     if debug:
         logger.setLevel(logging.DEBUG)
         handler = logging.StreamHandler(sys.stdout)
-        formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        )
+        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
         handler.setFormatter(formatter)
         logger.addHandler(handler)
 
@@ -379,9 +362,7 @@ def main(
                 )
                 if no_dry_run:
                     # Create a cloudformation template to deploy in to this account
-                    template = snyk.generate_snyk_cloud_aws_cfn_template(
-                        matched_rule.org_id
-                    )
+                    template = snyk.generate_snyk_cloud_aws_cfn_template(matched_rule.org_id)
 
                     # Assume a role in to the target account and deploy the cfn template
                     stack_name = STACK_NAME_TEMPLATE.format(account["Id"])
@@ -396,9 +377,7 @@ def main(
                         assumed_session = _get_session()
                     else:
                         assumed_session = aws.role_arn_to_session(
-                            RoleArn=ROLE_ARN_TEMPLATE.format(
-                                account["Id"], config["account_access_role"]
-                            ),
+                            RoleArn=ROLE_ARN_TEMPLATE.format(account["Id"], config["account_access_role"]),
                             RoleSessionName="SnykCloudDeploymentSession",
                         )
                         print(
@@ -420,9 +399,7 @@ def main(
                     )
 
                     # Wait for the template to finish deploying
-                    assumed_cfn_client.get_waiter("stack_create_complete").wait(
-                        StackName=stack_name
-                    )
+                    assumed_cfn_client.get_waiter("stack_create_complete").wait(StackName=stack_name)
 
                     # Get the role arn from the stack outputs
                     print(
@@ -445,13 +422,8 @@ def main(
                         + f"Found Snyk role {snyk_cloud_role_arn} in stack outputs, deploying Snyk Cloud environment..."
                     )
                     if snyk_cloud_role_arn:
-                        snyk.create_snyk_cloud_environment(
-                            matched_rule.org_id, snyk_cloud_role_arn
-                        )
-                        print(
-                            stylize(f"[{account['Id']}] ", STYLE_INFO)
-                            + stylize(f"...done", STYLE_SUCCESS)
-                        )
+                        snyk.create_snyk_cloud_environment(matched_rule.org_id, snyk_cloud_role_arn)
+                        print(stylize(f"[{account['Id']}] ", STYLE_INFO) + stylize(f"...done", STYLE_SUCCESS))
 
     # If we're running in dry run mode, then we should tell the user to run the no dry run in order to do it
     if not no_dry_run:
