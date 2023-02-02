@@ -25,7 +25,7 @@ pip3 install -r lambda/requirements.txt --target ./_package
 cp lambda/main.py ./_package
 
 # Zip up the package dependencies
-cd _package; zip -r ../aws-account-monitor.zip *; cd ..
+cd _package; zip -r ../lambda-account-monitor-package.zip *; cd ..
 
 # Delete the temporary package folder
 rm -rf ./_package
