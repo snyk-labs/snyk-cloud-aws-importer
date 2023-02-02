@@ -19,17 +19,16 @@ jobs:
       - name: Install Poetry
         run: curl -sSL https://install.python-poetry.org | python3 -
 
-      - name: Install dependencies
+      - name: Install dependencies onboarder
         working-directory: ./account_onboarder
         run: $HOME/.local/bin/poetry install -v
         env:
           POETRY_VIRTUALENVS_IN_PROJECT: true
 
-      - name: Run pytest
-        working-directory: ./account_onboarder
-        run: |
-          source .venv/bin/activate
-          $HOME/.local/bin/poetry run pytest
+      - name: Install dependencies monitor
+        working-directory: ./account_monitor/lambda
+        run: pip install -r requirements.txt
+
   snyk_monitor:
     runs-on: ubuntu-latest
     steps:
