@@ -26,6 +26,7 @@ jobs:
           POETRY_VIRTUALENVS_IN_PROJECT: true
 
       - name: Run pytest
+        working-directory: ./account_onboarder
         run: |
           $HOME/.local/bin/poetry shell
           $HOME/.local/bin/poetry run pytest
