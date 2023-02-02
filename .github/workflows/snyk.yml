@@ -28,7 +28,6 @@ jobs:
       - name: Run pytest
         working-directory: ./account_onboarder
         run: |
-          $HOME/.local/bin/poetry shell
           $HOME/.local/bin/poetry run pytest
   snyk:
     runs-on: ubuntu-latest
