@@ -25,10 +25,6 @@ jobs:
         env:
           POETRY_VIRTUALENVS_IN_PROJECT: true
 
-      - name: Install dependencies monitor
-        working-directory: ./account_monitor
-        run: pip install -r lambda/requirements.txt
-
   snyk_monitor:
     runs-on: ubuntu-latest
     needs: prep
@@ -39,6 +35,9 @@ jobs:
         with:
           python-version: "3.9"
           architecture: "x64"
+      - name: Install dependencies monitor
+        working-directory: ./account_monitor
+        run: pip install -r lambda/requirements.txt
       - name: Snyk test
         run: snyk test --all-projects --org=ie-playground --severity-threshold=critical --project-lifecycle=development
         env:
