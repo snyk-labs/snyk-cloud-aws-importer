@@ -7,10 +7,11 @@ This project provides a CloudFormation template which deploys EventBridge rules 
 ## Deploying the CloudFormation template
 ######
 
-### Setting up your config.yaml file
-The `config.yaml` file tells the tool some basic information about your AWS setup (things like regions, roles, etc) and
+### Setting up your configuration
+The config (in JSON format) tells the tool some basic information about your AWS setup (things like regions, roles, etc) and
 also contains the rules the tool will use to map AWS accounts to Snyk organisations. Below is a reference for the config
-file which details what each parameter is for and what values it can be set to.
+file which details what each parameter is for and what values it can be set to. This config is stored in SSM as a JSON
+document which the Lambda function uses. 
 
 * *deployment_region*: The region where the tool should deploy the CloudFormation template (the template only deploys
 a role, so this region doesn't impact anything material see: [AWS Global Services](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/#:~:text=Except%20as%20otherwise%20specified%2C%20Global,store%20and%20process%20data%20globally.))
@@ -28,7 +29,7 @@ the email address of the AWS account
 the friendly name of the AWS account
 
 ### Building AWS Lambda Package
-Before the CloudFormation template can be deployed, we must build the Lambda package so that it can be deployed to AWS. To do this navigate to the `lambda` directory and ensure the the `build_lambda.sh` file ie executable:
+Before the CloudFormation template can be deployed, we must build the Lambda package so that it can be deployed to AWS. To do this ensure the `build_lambda.sh` file ie executable:
 
 ```bash
 chmod u+x build_lambda.sh
