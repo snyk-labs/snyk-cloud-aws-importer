@@ -16,14 +16,14 @@ Resources:
     Type: 'AWS::SecretsManager::Secret'
     Properties:
       Description: Snyk API Token
-      Name: snyk/account_monitor/credentials
-      SecretString: 'Fn::Sub ${SnykAPIToken}'
+      Name: snyk/account_monitor/token
+      SecretString: !Sub "{\"token\": \"${SnykAPIToken}\"}"
   rConfigParameter:
     Type: 'AWS::SSM::Parameter'
     Properties:
       Type: String
       Description: "Contains the configuration in JSON format"
-      Name: "snyk/account_monitor/config"
+      Name: "/snyk/account_monitor/config"
       Value: !Ref AccountMonitorConfig
   rAccountEvents:
     Type: 'AWS::Events::Rule'
@@ -80,7 +80,7 @@ Resources:
       MemorySize: 128
       Environment:
         Variables:
-          SNYK_TOKEN_SECRET: !Select [1, !Split ["/", !Ref rSnykAPISecret]]
+          SNYK_TOKEN_SECRET: !Ref rSnykAPISecret
           SSM_CONFIG_NAME: !Ref rConfigParameter
       Timeout: 60
       Role:
