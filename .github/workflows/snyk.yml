@@ -5,7 +5,7 @@ on:
       - "feat/snyk-scanning"
   workflow_dispatch:
 jobs:
-  prep:
+  test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -25,9 +25,12 @@ jobs:
         env:
           POETRY_VIRTUALENVS_IN_PROJECT: true
 
-  snyk_monitor:
+      - name: Run pytest
+        run: |
+          source .venv/bin/activate
+          $HOME/.local/bin/poetry run pytest
+  snyk:
     runs-on: ubuntu-latest
-    needs: prep
     steps:
       - uses: actions/checkout@master
       - uses: snyk/actions/setup@master
@@ -35,9 +38,13 @@ jobs:
         with:
           python-version: "3.9"
           architecture: "x64"
+
+      # As we're running with pip for the Lambda function, we need to install our requirements first
       - name: Install dependencies monitor
         working-directory: ./account_monitor
         run: pip install -r lambda/requirements.txt
+
+      # Run a test and monitor - fail on critical vulns
       - name: Snyk test
         run: snyk test --all-projects --org=ie-playground --severity-threshold=critical --project-lifecycle=development
         env:
