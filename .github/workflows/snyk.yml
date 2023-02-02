@@ -1,0 +1,55 @@
+name: Build and Deploy
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+
+      - name: Install Poetry
+        run: curl -sSL https://install.python-poetry.org | python3 -
+
+      - name: Install dependencies onboarder
+        working-directory: ./account_onboarder
+        run: $HOME/.local/bin/poetry install -v
+        env:
+          POETRY_VIRTUALENVS_IN_PROJECT: true
+
+      - name: Run pytest
+        working-directory: ./account_onboarder
+        run: |
+          $HOME/.local/bin/poetry run pytest
+  snyk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - uses: snyk/actions/setup@master
+      - uses: actions/setup-python@v2
+        with:
+          python-version: "3.9"
+          architecture: "x64"
+
+      # As we're running with pip for the Lambda function, we need to install our requirements first
+      - name: Install dependencies monitor
+        working-directory: ./account_monitor
+        run: pip install -r lambda/requirements.txt
+
+      # Run a test and monitor - fail on critical vulns
+      - name: Snyk test
+        run: snyk test --all-projects --org=ie-playground --severity-threshold=critical --project-lifecycle=development
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      - name: Snyk monitor
+        run: snyk monitor --all-projects --org=ie-playground --project-lifecycle=development --tags=app=snyk-cloud-aws-onboarder
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
