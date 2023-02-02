@@ -26,8 +26,8 @@ jobs:
           POETRY_VIRTUALENVS_IN_PROJECT: true
 
       - name: Install dependencies monitor
-        working-directory: ./account_monitor/lambda
-        run: pip install -r requirements.txt
+        working-directory: ./account_monitor
+        run: pip install -r lambda/requirements.txt
 
   snyk_monitor:
     runs-on: ubuntu-latest
