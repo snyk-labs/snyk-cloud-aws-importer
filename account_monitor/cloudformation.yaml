@@ -95,9 +95,15 @@ Resources:
             Action:
               - 'kms:Decrypt'
               - 'logs:CreateLogStream'
-              - 'secretsmanager:GetSecretValue'
-              - 'ssm:GetParameter'
             Resource: '*'
+          - Effect: Allow
+            Action:
+              - 'ssm:GetParameter'
+            Resource: !GetAtt rConfigParameter.arn
+          - Effect: Allow
+            Action:
+              - 'secretsmanager:GetSecretValue'
+            Resource: !GetAtt rSnykAPISecret.arn
       Roles:
         - !Ref rLambdaRole
   rLambdaRole:
