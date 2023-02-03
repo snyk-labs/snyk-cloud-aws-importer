@@ -84,6 +84,22 @@ Resources:
       Action: 'lambda:InvokeFunction'
       Principal: 'events.amazonaws.com'
       SourceArn: !GetAtt rAccountEventsOrgs.Arn
+  rLambdaPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: AWSAccountMonitorPolicy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'kms:Decrypt'
+              - 'logs:CreateLogStream'
+              - 'secretsmanager:GetSecretValue'
+              - 'ssm:GetParameter'
+            Resource: '*'
+      Roles:
+        - !Ref rLambdaRole
   rLambdaRole:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -96,8 +112,6 @@ Resources:
             Principal:
               Service:
                 - lambda.amazonaws.com
-      ManagedPolicyArns:
-        - 'arn:aws:iam::aws:policy/AdministratorAccess'
       Path: /
   rLambdaFunction:
     Type: 'AWS::Lambda::Function'
