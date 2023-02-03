@@ -46,6 +46,8 @@ Resources:
       Description: CloudWatch Rule to Trigger Snyk AWS Account Monitor Lambda
       Name: SnykCloudControlTowerAccountCreated
       EventPattern:
+        detail-type:
+          - AWS API Call via CloudTrail
         detail:
           eventName:
             - 'CreateManagedAccount'
@@ -59,6 +61,8 @@ Resources:
       Description: CloudWatch Rule to Trigger Snyk AWS Account Monitor Lambda
       Name: SnykCloudOrgsAccountCreated
       EventPattern:
+        detail-type:
+          - AWS API Call via CloudTrail
         detail:
           eventName:
             - 'CreateAccountResult'
@@ -80,6 +84,41 @@ Resources:
       Action: 'lambda:InvokeFunction'
       Principal: 'events.amazonaws.com'
       SourceArn: !GetAtt rAccountEventsOrgs.Arn
+  rLambdaPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: AWSAccountMonitorPolicy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowSecretsManager
+            Effect: Allow
+            Action: kms:Decrypt
+            Resource: "*"
+            Condition:
+              StringEquals:
+                kms:RequestAlias: aws/secretsmanager
+          - Sid: AllowSTSAssumeRole
+            Effect: Allow
+            Action: sts:AssumeRole
+            Resource: 
+              - arn:aws:iam::*:role/OrganizationAccountAccessRole
+              - arn:aws:iam::*:role/AWSControlTowerExecution
+          - Sid: AllowSecretsSSM
+            Effect: Allow
+            Action:
+              - secretsmanager:GetSecretValue
+              - ssm:GetParameter
+            Resource:
+              - !Ref rSnykAPISecret
+              - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${rConfigParameter}
+          - Sid: AllowOrgsAccess
+            Effect: Allow
+            Action:
+              - organizations:DescribeAccount
+            Resource: "*"
+      Roles:
+        - !Ref rLambdaRole
   rLambdaRole:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -93,7 +132,7 @@ Resources:
               Service:
                 - lambda.amazonaws.com
       ManagedPolicyArns:
-        - 'arn:aws:iam::aws:policy/AdministratorAccess'
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Path: /
   rLambdaFunction:
     Type: 'AWS::Lambda::Function'
