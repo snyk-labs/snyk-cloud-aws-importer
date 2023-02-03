@@ -49,8 +49,6 @@ Resources:
         detail-type:
           - AWS API Call via CloudTrail
         detail:
-          eventSource:
-            - 'controltower.amazonaws.com'
           eventName:
             - 'CreateManagedAccount'
       State: ENABLED
@@ -66,8 +64,6 @@ Resources:
         detail-type:
           - AWS API Call via CloudTrail
         detail:
-          eventSource:
-            - 'organizations.amazonaws.com'
           eventName:
             - 'CreateAccountResult'
       State: ENABLED
