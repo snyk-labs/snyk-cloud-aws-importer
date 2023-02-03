@@ -17,6 +17,7 @@ import fnmatch
 import json
 import logging
 import os
+import time
 from enum import Enum
 
 import boto3
@@ -275,6 +276,9 @@ def _test_subject(subject, mapping_rules):
 
 
 def lambda_handler(event, context):
+    # We need to wait a little while for the account to be bootstrapped
+    time.sleep(120)
+
     # Instantiate the helpers
     snyk = SnykUtilities(get_snyk_token_secret())
     aws = AwsUtilities()
