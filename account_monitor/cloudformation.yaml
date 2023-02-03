@@ -99,11 +99,11 @@ Resources:
           - Effect: Allow
             Action:
               - 'ssm:GetParameter'
-            Resource: !GetAtt rConfigParameter.arn
+            Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${rConfigParameter}
           - Effect: Allow
             Action:
               - 'secretsmanager:GetSecretValue'
-            Resource: !GetAtt rSnykAPISecret.arn
+            Resource: !Ref rSnykAPISecret
       Roles:
         - !Ref rLambdaRole
   rLambdaRole:
