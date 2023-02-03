@@ -91,19 +91,32 @@ Resources:
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
-          - Effect: Allow
+          - Sid: AllowSecretsManager
+            Effect: Allow
+            Action: kms:Decrypt
+            Resource: "*"
+            Condition:
+              StringEquals:
+                kms:RequestAlias: aws/secretsmanager
+          - Sid: AllowSTSAssumeRole
+            Effect: Allow
+            Action: sts:AssumeRole
+            Resource: 
+              - arn:aws:iam::*:role/OrganizationAccountAccessRole
+              - arn:aws:iam::*:role/AWSControlTowerExecution
+          - Sid: AllowSecretsSSM
+            Effect: Allow
             Action:
-              - 'kms:Decrypt'
-              - 'logs:CreateLogStream'
-            Resource: '*'
-          - Effect: Allow
+              - secretsmanager:GetSecretValue
+              - ssm:GetParameter
+            Resource:
+              - !Ref rSnykAPISecret
+              - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${rConfigParameter}
+          - Sid: AllowOrgsAccess
+            Effect: Allow
             Action:
-              - 'ssm:GetParameter'
-            Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${rConfigParameter}
-          - Effect: Allow
-            Action:
-              - 'secretsmanager:GetSecretValue'
-            Resource: !Ref rSnykAPISecret
+              - organizations:DescribeAccount
+            Resource: "*"
       Roles:
         - !Ref rLambdaRole
   rLambdaRole:
@@ -118,6 +131,8 @@ Resources:
             Principal:
               Service:
                 - lambda.amazonaws.com
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Path: /
   rLambdaFunction:
     Type: 'AWS::Lambda::Function'
