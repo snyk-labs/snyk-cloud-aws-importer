@@ -53,3 +53,9 @@ jobs:
         run: snyk monitor --all-projects --org=ie-playground --project-lifecycle=development --tags=app=snyk-cloud-aws-onboarder
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      # Run a Snyk IaC scan
+      - name: Snyk IaC scan
+        run: snyk iac test ./account_monitor --severity-threshold=medium
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
