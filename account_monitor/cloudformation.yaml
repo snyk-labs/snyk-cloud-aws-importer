@@ -99,7 +99,7 @@ Resources:
           - Effect: Allow
             Action:
               - 'ssm:GetParameter'
-            Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${rConfigParameter}
+            Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${rConfigParameter}
           - Effect: Allow
             Action:
               - 'secretsmanager:GetSecretValue'
