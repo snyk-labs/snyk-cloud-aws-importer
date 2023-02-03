@@ -46,6 +46,8 @@ Resources:
       Description: CloudWatch Rule to Trigger Snyk AWS Account Monitor Lambda
       Name: SnykCloudControlTowerAccountCreated
       EventPattern:
+        detail-type:
+          - AWS API Call via CloudTrail
         detail:
           eventName:
             - 'CreateManagedAccount'
@@ -59,6 +61,8 @@ Resources:
       Description: CloudWatch Rule to Trigger Snyk AWS Account Monitor Lambda
       Name: SnykCloudOrgsAccountCreated
       EventPattern:
+        detail-type:
+          - AWS API Call via CloudTrail
         detail:
           eventName:
             - 'CreateAccountResult'
@@ -80,6 +84,28 @@ Resources:
       Action: 'lambda:InvokeFunction'
       Principal: 'events.amazonaws.com'
       SourceArn: !GetAtt rAccountEventsOrgs.Arn
+  rLambdaPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: AWSAccountMonitorPolicy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'kms:Decrypt'
+              - 'logs:CreateLogStream'
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - 'ssm:GetParameter'
+            Resource: !GetAtt rConfigParameter.arn
+          - Effect: Allow
+            Action:
+              - 'secretsmanager:GetSecretValue'
+            Resource: !GetAtt rSnykAPISecret.arn
+      Roles:
+        - !Ref rLambdaRole
   rLambdaRole:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -92,8 +118,6 @@ Resources:
             Principal:
               Service:
                 - lambda.amazonaws.com
-      ManagedPolicyArns:
-        - 'arn:aws:iam::aws:policy/AdministratorAccess'
       Path: /
   rLambdaFunction:
     Type: 'AWS::Lambda::Function'
