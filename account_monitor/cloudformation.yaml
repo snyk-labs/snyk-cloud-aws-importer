@@ -139,7 +139,7 @@ Resources:
       Runtime: python3.9
       Code:
         S3Bucket: aws-account-monitor
-        S3Key: aws-account-monitor.zip
+        S3Key: lambda-account-monitor-package-v0.3.0.zip
       Handler: main.lambda_handler
       MemorySize: 128
       Environment:

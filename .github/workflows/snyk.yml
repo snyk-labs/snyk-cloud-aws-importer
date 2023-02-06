@@ -1,4 +1,4 @@
-name: Build and Deploy
+name: Linting and testing
 on:
   push:
     branches:
