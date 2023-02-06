@@ -23,8 +23,7 @@ be used for testing.
 
 
 ### Debug log
-If applicable, please add `DEBUG=*snyk* <command here>` before your command and include the output here **ensuring to remove any sensitive/personal details or tokens.
-
+If applicable include the logs to help diagnose and reproduce the error.
 
 ### Screenshots
 If applicable, add screenshots to help explain your problem.
