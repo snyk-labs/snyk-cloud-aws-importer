@@ -1,0 +1,22 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build:
+    name: Publish Lambda package
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build
+      working-directory: ./account_monitor
+      run: bash build_lambda.sh
+    - name: Upload Lambda package
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: account_monitor/lambda-account-monitor-package.zip
