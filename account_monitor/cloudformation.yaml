@@ -46,8 +46,6 @@ Resources:
       Description: CloudWatch Rule to Trigger Snyk AWS Account Monitor Lambda
       Name: SnykCloudControlTowerAccountCreated
       EventPattern:
-        detail-type:
-          - AWS API Call via CloudTrail
         detail:
           eventName:
             - 'CreateManagedAccount'
@@ -61,8 +59,6 @@ Resources:
       Description: CloudWatch Rule to Trigger Snyk AWS Account Monitor Lambda
       Name: SnykCloudOrgsAccountCreated
       EventPattern:
-        detail-type:
-          - AWS API Call via CloudTrail
         detail:
           eventName:
             - 'CreateAccountResult'
