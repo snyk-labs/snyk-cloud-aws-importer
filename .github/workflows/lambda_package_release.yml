@@ -7,16 +7,38 @@ on:
 
 jobs:
   build:
-    name: Publish Lambda package
+    name: Publish Lambda package in releases
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v3
     - name: Build
       working-directory: ./account_monitor
       run: bash build_lambda.sh
-    - name: Upload Lambda package
+    - name: Upload Lambda package to releases
       uses: softprops/action-gh-release@v1
       if: startsWith(github.ref, 'refs/tags/')
       with:
         files: account_monitor/lambda-account-monitor-package.zip
+    - name: Upload Lambda package to releases
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: account_monitor/lambda-account-monitor-package.zip
+
+  deploy_to_s3:
+    name: Upload Lambda package to s3
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build
+      working-directory: ./account_monitor
+      run: bash build_lambda.sh
+    - name: Rename and upload to s3
+      run: |
+        mv ./account_monitor/lambda-account-monitor-package.zip ./account_monitor/lambda-account-monitor-package-${{  github.ref_name }}.zip
+        aws s3 cp ./account_monitor/lambda-account-monitor-package-${{  github.ref_name }}.zip s3://${{ env.DEPLOYMENT_BUCKET }}
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+        DEPLOYMENT_BUCKET: ${{ secrets.DEPLOYMENT_BUCKET }}

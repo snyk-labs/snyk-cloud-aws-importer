@@ -7,7 +7,11 @@
 *** Don't forget to give the project a star!
 *** Thanks again! Now go create something AMAZING! :D
 -->
+<center>
 
+![Snyk logo](https://snyk.io/style/asset/logo/snyk-print.svg)
+
+![snyk-oss-category](https://raw.githubusercontent.com/snyk-labs/oss-images/main/oss-community.jpg)
 
 
 <!-- PROJECT SHIELDS -->
@@ -24,7 +28,7 @@
 [![Issues][issues-shield]][issues-url]
 [![Apache License][license-shield]][license-url]
 [![Build and Deploy](https://github.com/snyk-labs/snyk-cloud-aws-importer/actions/workflows/snyk.yml/badge.svg?branch=master)](https://github.com/snyk-labs/snyk-cloud-aws-importer/actions/workflows/snyk.yml)
-
+</center>
 
 
 <!-- PROJECT LOGO -->
