@@ -45,7 +45,7 @@ jobs:
       # As we're running with pip for the Lambda function, we need to install our requirements first
       - name: Install dependencies monitor
         working-directory: ./account_monitor
-        run: pip install -r lambda/requirements.txt
+        run: pip install -r assets/lambda/requirements.txt
 
       # Run a test and monitor - fail on critical vulns
       - name: Snyk test
@@ -58,7 +58,11 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
       # Run a Snyk IaC scan
-      - name: Snyk IaC scan
-        run: snyk iac test ./account_monitor --severity-threshold=medium
+      - name: Snyk IaC scan (CFN)
+        run: snyk iac test ./account_monitor/cloudformation --severity-threshold=medium
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      - name: Snyk IaC scan (Terraform)
+        run: snyk iac test ./account_monitor/terraform --severity-threshold=medium
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
