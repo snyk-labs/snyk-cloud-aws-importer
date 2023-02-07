@@ -19,10 +19,10 @@
 mkdir _package
 
 # Install package dependencies
-pip3 install -r lambda/requirements.txt --target ./_package
+pip3 install -r assets/lambda/requirements.txt --target ./_package
 
 # Copy the lambda function itself to the package
-cp lambda/main.py ./_package
+cp assets/lambda/main.py ./_package
 
 # Zip up the package dependencies
 cd _package; zip -r ../lambda-account-monitor-package.zip *; cd ..
