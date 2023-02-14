@@ -49,6 +49,16 @@ STYLE_ERR = colored.fg("red") + colored.attr("bold")
 STYLE_WARN = colored.fg("yellow") + colored.attr("bold")
 STYLE_SUCCESS = colored.fg("green") + colored.attr("bold")
 
+# Exit codes
+EXIT_CONFIG_NOT_FOUND = 1
+EXIT_YAML_PARSE_ERROR = 2
+EXIT_MAPPING_RULE_LOAD_ERROR = 3
+EXIT_MISSING_ENV_VARS = 4
+
+
+class MappingRuleException(Exception):
+    pass
+
 
 class FilterMatchResult(Enum):
     MATCH = 1
@@ -263,21 +273,24 @@ def _prepare_mapping_rules(mapping_rules):
     :param mapping_rules: the yaml format rules
     :return: A list of mapping rule objects
     """
-    loaded_mapping_rules = []
-    for rule in mapping_rules:
-        match_type = MappingMatchType[rule["match_type"]]
-        if match_type == MappingMatchType.DEFAULT:
-            filter = None
-        else:
-            filter = AccountFilter(
-                rule["filter"].get("account_ids", []),
-                rule["filter"].get("email_patterns", []),
-                rule["filter"].get("name_patterns", []),
-            )
-        mapping = MappingRule(filter, rule["org_id"], match_type)
-        loaded_mapping_rules.append(mapping)
-    logger.debug(f"loaded {len(loaded_mapping_rules)} mapping rules from config")
-    return loaded_mapping_rules
+    try:
+        loaded_mapping_rules = []
+        for rule in mapping_rules:
+            match_type = MappingMatchType[rule["match_type"]]
+            if match_type == MappingMatchType.DEFAULT:
+                filter = None
+            else:
+                filter = AccountFilter(
+                    rule["filter"].get("account_ids", []),
+                    rule["filter"].get("email_patterns", []),
+                    rule["filter"].get("name_patterns", []),
+                )
+            mapping = MappingRule(filter, rule["org_id"], match_type)
+            loaded_mapping_rules.append(mapping)
+        logger.debug(f"loaded {len(loaded_mapping_rules)} mapping rules from config")
+        return loaded_mapping_rules
+    except KeyError:
+        raise MappingRuleException("Invalid mapping rules, please check and ensure your rules are valid")
 
 
 def _test_subject(subject, mapping_rules):
@@ -311,14 +324,47 @@ def main(
         handler.setFormatter(formatter)
         logger.addHandler(handler)
 
+    # Some checks and balances to make sure we've got everything we need to run
+    if not os.path.isfile(config_file):
+        logger.error(f"could not find config file at {config_file}")
+        print(stylize(f"Could not find config file at {config_file}", STYLE_ERR))
+        sys.exit(EXIT_CONFIG_NOT_FOUND)
+    if not (SNYK_TOKEN and AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY):
+        logger.debug(os.environ)
+        logger.error("environment variables `SNYK_TOKEN`, `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` must be set")
+        print(
+            stylize(
+                "environment variables `SNYK_TOKEN`, `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` must be set",
+                STYLE_ERR,
+            )
+        )
+        sys.exit(EXIT_MISSING_ENV_VARS)
+
     # Instantiate the helper classes
     aws = AwsUtilities()
     snyk = SnykUtilities()
 
     # Load our config file and parse it
-    config = _load_config(config_file)
-    mapping_rules = _prepare_mapping_rules(config["account_org_mapping_rules"])
-    print(stylize("Config file successfully loaded...", STYLE_SUCCESS))
+    try:
+        config = _load_config(config_file)
+    except yaml.YAMLError as e:
+        logger.error(f"could not read config file, please check your config - {str(e)}")
+        print(
+            stylize(
+                f"could not read config file, please check your config - {str(e)}",
+                STYLE_ERR,
+            )
+        )
+        sys.exit(EXIT_YAML_PARSE_ERROR)
+
+    # Load mapping rules from the config
+    try:
+        mapping_rules = _prepare_mapping_rules(config["account_org_mapping_rules"])
+        print(stylize("Config file successfully loaded...", STYLE_SUCCESS))
+    except (MappingRuleException, KeyError) as e:
+        logger.debug(f"could not read config file, please check your config - {str(config)}")
+        print(stylize(f"could not read config file, please check your config", STYLE_ERR))
+        sys.exit(EXIT_MAPPING_RULE_LOAD_ERROR)
 
     # Pull down a list of accounts and then filter them based on our rules
     print("Attempting to grab list of accounts from AWS...")
