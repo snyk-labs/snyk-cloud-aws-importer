@@ -263,11 +263,8 @@ def _load_config(config_file):
     :param config_file: the file path
     :return: Loaded config
     """
-    try:
-        with open(config_file, "r") as fs:
-            return yaml.safe_load(fs)
-    except yaml.YAMLError as e:
-        return e
+    with open(config_file, "r") as fs:
+        return yaml.safe_load(fs)
 
 
 def _prepare_mapping_rules(mapping_rules):
@@ -348,14 +345,13 @@ def main(
     snyk = SnykUtilities()
 
     # Load our config file and parse it
-    config = _load_config(config_file)
-
-    # Check to ensure we could parse the config file
-    if type(config) is yaml.YAMLError:
-        logger.error(f"could not read config file, please check your config - {str(config)}")
+    try:
+        config = _load_config(config_file)
+    except yaml.YAMLError as e:
+        logger.error(f"could not read config file, please check your config - {str(e)}")
         print(
             stylize(
-                f"could not read config file, please check your config - {str(config)}",
+                f"could not read config file, please check your config - {str(e)}",
                 STYLE_ERR,
             )
         )
