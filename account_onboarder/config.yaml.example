@@ -16,12 +16,13 @@
 account_access_role: OrganizationAccountAccessRole
 organizations_master_account_id: "123123123123"
 deployment_region: us-east-1
+snyk_group_id: 56564ed1-091c-43b6-8c17-9cfe8298fab5
 account_org_mapping_rules:
   - org_id: 56564ed1-091c-43b6-8c17-9cfe8298fab5
     match_type: ALL
     filter:
       account_ids: ["364033979709"]
-  - org_id: 234224ed1-091c-43b6-8c17-9cfe8298fab5
+  - org_name: test
     match_type: ALL
     filter:
       email_patterns: ["*dev*"]
