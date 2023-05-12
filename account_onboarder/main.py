@@ -57,7 +57,19 @@ EXIT_MAPPING_RULE_LOAD_ERROR = 3
 EXIT_MISSING_ENV_VARS = 4
 
 # Get the valid AWS regions for us to check config against
-AWS_REGIONS = [region["RegionName"] for region in boto3.client("ec2").describe_regions()["Regions"]]
+
+
+def _get_session():
+    return boto3.Session(
+        aws_access_key_id=AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+    )
+
+
+AWS_REGIONS = [
+    region["RegionName"]
+    for region in _get_session().client("ec2", region_name="us-east-1").describe_regions()["Regions"]
+]
 
 
 class MappingRuleException(Exception):
@@ -290,13 +302,6 @@ class AwsUtilities:
         for page in response_iterator:
             accounts.extend(page.get("Accounts"))
         return [x for x in accounts if x.get("Status") == "ACTIVE"]  # No point getting inactive accounts
-
-
-def _get_session():
-    return boto3.Session(
-        aws_access_key_id=AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-    )
 
 
 def _load_config(config_file):
