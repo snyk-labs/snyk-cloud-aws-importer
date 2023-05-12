@@ -329,9 +329,11 @@ def _validate_config(config, orgs):
     region = config.get("deployment_region")
     if region not in AWS_REGIONS:
         logger.error(
-            "{region} does not seem to be a valid AWS region - try updating the boto3 library if you think"
+            f"{region} does not seem to be a valid AWS region - try updating the boto3 library if you think"
             " this is a mistake"
         )
+        logger.error(f"Valid regions are {', '.join(AWS_REGIONS)}")
+        return False
 
     # Check the mapping rules for validity
     for rule in config.get("account_org_mapping_rules", []):
