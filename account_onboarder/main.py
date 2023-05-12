@@ -16,6 +16,7 @@
 import fnmatch
 import logging
 import os
+import re
 import sys
 from enum import Enum
 
@@ -54,6 +55,21 @@ EXIT_CONFIG_NOT_FOUND = 1
 EXIT_YAML_PARSE_ERROR = 2
 EXIT_MAPPING_RULE_LOAD_ERROR = 3
 EXIT_MISSING_ENV_VARS = 4
+
+# Get the valid AWS regions for us to check config against
+
+
+def _get_session():
+    return boto3.Session(
+        aws_access_key_id=AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+    )
+
+
+AWS_REGIONS = [
+    region["RegionName"]
+    for region in _get_session().client("ec2", region_name="us-east-1").describe_regions()["Regions"]
+]
 
 
 class MappingRuleException(Exception):
@@ -220,6 +236,44 @@ class SnykUtilities:
         logger.debug(response.content)
         return response.status_code == 201
 
+    def get_snyk_organisations(self):
+        """
+        Gets the full list of Snyk organisations that the current token has access to
+        :return: the list of organisations
+        """
+        logger.debug(f"listing organisations")
+        response = requests.get(f"{BASE_URL}v1/orgs", headers=HEADERS)
+        return response.json().get("orgs", [])
+
+    def create_org(self, org_name, group_id):
+        """
+        Creates a new Snyk org
+        :param org_name: the name of the new org
+        :param group_id: the group to put the org under
+        :return: the new org ID
+        """
+        logger.debug(f"creating new Snyk org {org_name}")
+        response = requests.post(
+            f"{BASE_URL}v1/org",
+            headers=HEADERS,
+            json={"name": org_name, "groupId": group_id},
+        )
+        return response.json()["id"]
+
+    def get_or_create_org_id(self, orgs, org_name, group_id):
+        """
+        Will either create a new org and return the ID or get the ID of an existing org
+        :param orgs: the whole list of orgs
+        :param org_name: the name of the org to check
+        :param group_id: the group ID (only used for creation)
+        :return: the ID of the org
+        """
+        if org_name and len([x for x in orgs if x["name"] == org_name]) == 0:
+            org_id = self.create_org(org_name, group_id)
+        elif org_name and len([x for x in orgs if x["name"] == org_name]) > 0:
+            org_id = [x for x in orgs if x["name"] == org_name][0]["id"]
+        return org_id
+
 
 class AwsUtilities:
     def role_arn_to_session(self, **args):
@@ -250,13 +304,6 @@ class AwsUtilities:
         return [x for x in accounts if x.get("Status") == "ACTIVE"]  # No point getting inactive accounts
 
 
-def _get_session():
-    return boto3.Session(
-        aws_access_key_id=AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-    )
-
-
 def _load_config(config_file):
     """
     Loads the specified yaml file
@@ -267,10 +314,53 @@ def _load_config(config_file):
         return yaml.safe_load(fs)
 
 
-def _prepare_mapping_rules(mapping_rules):
+def _validate_config(config, orgs):
+    # Check if master account ID is a valid (looking) AWS account ID
+    if not re.fullmatch(r"\d{12}", config.get("organizations_master_account_id", "")):
+        logger.error("master account ID should be 12 numeric characters, please check and try again")
+        return False
+
+    # Check if the access role looks valid
+    if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_=.-]{0,63}", config.get("account_access_role", "")):
+        logger.error("role name provided is invalid - please see AWS documentation for valid role names")
+        return False
+
+    # Check that the region is valid
+    region = config.get("deployment_region")
+    if region not in AWS_REGIONS:
+        logger.error(
+            f"{region} does not seem to be a valid AWS region - try updating the boto3 library if you think"
+            " this is a mistake"
+        )
+        logger.error(f"Valid regions are {', '.join(AWS_REGIONS)}")
+        return False
+
+    # Check the mapping rules for validity
+    for rule in config.get("account_org_mapping_rules", []):
+        org_id = rule.get("org_id")
+        org_name = rule.get("org_name")
+        org_ids_match = len([x for x in orgs if x["id"] == org_id])
+        org_names_match = len([x for x in orgs if x["name"] == org_name])
+
+        # If we specify an org ID and we don't find that ID
+        if org_id and org_ids_match == 0:
+            logger.error(f"could not find org with id {org_id} in Snyk group")
+            return False
+
+        # If we specify an org name and there's more than one org with that name
+        if org_name and org_names_match > 1:
+            logger.error(f"multiple orgs named {org_name} were found, please use org_id instead")
+            return False
+
+    # If we get here, everything should be OK
+    return True
+
+
+def _prepare_mapping_rules(mapping_rules, config, orgs, snyk):
     """
     Parses the mapping rules from the yaml format to objects we can work with
     :param mapping_rules: the yaml format rules
+    :param snyk: the Snyk helper class
     :return: A list of mapping rule objects
     """
     try:
@@ -285,7 +375,11 @@ def _prepare_mapping_rules(mapping_rules):
                     rule["filter"].get("email_patterns", []),
                     rule["filter"].get("name_patterns", []),
                 )
-            mapping = MappingRule(filter, rule["org_id"], match_type)
+            if rule.get("org_name"):
+                org_id = snyk.get_or_create_org_id(orgs, rule.get("org_name"), config.get("snyk_group_id"))
+            else:
+                org_id = rule["org_id"]
+            mapping = MappingRule(filter, org_id, match_type)
             loaded_mapping_rules.append(mapping)
         logger.debug(f"loaded {len(loaded_mapping_rules)} mapping rules from config")
         return loaded_mapping_rules
@@ -343,6 +437,7 @@ def main(
     # Instantiate the helper classes
     aws = AwsUtilities()
     snyk = SnykUtilities()
+    orgs = snyk.get_snyk_organisations()
 
     # Load our config file and parse it
     try:
@@ -357,9 +452,15 @@ def main(
         )
         sys.exit(EXIT_YAML_PARSE_ERROR)
 
+    # Make sure our config is valid
+    validation_result = _validate_config(config, orgs)
+    if not validation_result:
+        logger.error("could not validate config - exiting")
+        exit(1)
+
     # Load mapping rules from the config
     try:
-        mapping_rules = _prepare_mapping_rules(config["account_org_mapping_rules"])
+        mapping_rules = _prepare_mapping_rules(config["account_org_mapping_rules"], config, orgs, snyk)
         print(stylize("Config file successfully loaded...", STYLE_SUCCESS))
     except (MappingRuleException, KeyError) as e:
         logger.debug(f"could not read config file, please check your config - {str(config)}")
