@@ -59,17 +59,28 @@ EXIT_MISSING_ENV_VARS = 4
 # Get the valid AWS regions for us to check config against
 
 
-def _get_session():
-    return boto3.Session(
-        aws_access_key_id=AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-    )
+def _get_session(use_metadata):
+    if use_metadata:
+        try:
+            # Try to retrieve a piece of data from the EC2 metadata service
+            requests.get("http://169.254.169.254/latest/meta-data/", timeout=2)
+
+            # If successful, we are likely on an EC2 instance
+            return boto3.Session()
+        except requests.exceptions.RequestException:
+            # If the request to the EC2 metadata service fails, use the provided credentials
+            return boto3.Session(
+                aws_access_key_id=AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+            )
+    else:
+        return boto3.Session(
+            aws_access_key_id=AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+        )
 
 
-AWS_REGIONS = [
-    region["RegionName"]
-    for region in _get_session().client("ec2", region_name="us-east-1").describe_regions()["Regions"]
-]
+AWS_REGIONS = None
 
 
 class MappingRuleException(Exception):
@@ -409,7 +420,15 @@ def main(
     debug: bool = False,
     ignore_existing: bool = False,
     no_dry_run: bool = False,
+    use_instance_metadata: bool = True
 ):
+    # Set the regions
+    global AWS_REGIONS
+    AWS_REGIONS = [
+        region["RegionName"]
+        for region in _get_session(use_instance_metadata).client("ec2", region_name="us-east-1").describe_regions()["Regions"]
+    ]
+
     # Print log to stdout and set level to debug if the user asks for it
     if debug:
         logger.setLevel(logging.DEBUG)
