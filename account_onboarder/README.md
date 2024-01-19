@@ -68,6 +68,8 @@ python main.py --config-file config.yaml
 python main.py --config-file config.yaml --no-dry-run
 ```
 
+### Running in an EC2 instance
+By default, if the script is running in an EC2 instance, it'll try and grab temporary credentials and use the instance profile assigned to the instance. If you wish to turn off this behaviour and provide your own credentials, then use the `--use-instance-metadata=false` flag. The script will then revert to using provided credentials.
 ### Check results
 In Snyk:
 * Click on the settings icon for your organisation
