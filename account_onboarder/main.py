@@ -115,7 +115,11 @@ class AccountFilter:
         if len(self.account_ids) == 0:
             logger.debug(f"no account ids specified so returning NOT_APPLICABLE")
             return FilterMatchResult.NOT_APPLICABLE
-        return FilterMatchResult.MATCH if subject.get("Id") in self.account_ids else FilterMatchResult.NO_MATCH
+        return (
+            FilterMatchResult.MATCH
+            if subject.get("Id") in self.account_ids
+            else FilterMatchResult.NO_MATCH
+        )
 
     def email_match(self, subject):
         """
@@ -192,19 +196,27 @@ class SnykUtilities:
         :return: List of onboarded accounts
         """
         onboarded_environments = []
-        logger.debug(f"Querying Snyk Cloud for existing onboarded AWS Accounts within {org_id}")
+        logger.debug(
+            f"Querying Snyk Cloud for existing onboarded AWS Accounts within {org_id}"
+        )
 
         # Do the first page of results
         response = requests.get(
             f"{BASE_URL}/rest/orgs/{org_id}/cloud/environments?version={API_VERSION}&kind=aws&limit=100",
             headers=HEADERS,
         )
-        onboarded_environments.extend([x["attributes"]["native_id"] for x in response.json()["data"]])
+        onboarded_environments.extend(
+            [x["attributes"]["native_id"] for x in response.json()["data"]]
+        )
 
         # Go through all the pages until we're done
         while response.json().get("links", {}).get("next"):
-            response = requests.get(f"{BASE_URL}{response.json()['links'].get('next')}", headers=HEADERS)
-            onboarded_environments.extend([x["attributes"]["native_id"] for x in response.json()["data"]])
+            response = requests.get(
+                f"{BASE_URL}{response.json()['links'].get('next')}", headers=HEADERS
+            )
+            onboarded_environments.extend(
+                [x["attributes"]["native_id"] for x in response.json()["data"]]
+            )
         return onboarded_environments
 
     def generate_snyk_cloud_aws_cfn_template(self, org_id):
@@ -312,7 +324,9 @@ class AwsUtilities:
         response_iterator = paginator.paginate()
         for page in response_iterator:
             accounts.extend(page.get("Accounts"))
-        return [x for x in accounts if x.get("Status") == "ACTIVE"]  # No point getting inactive accounts
+        return [
+            x for x in accounts if x.get("Status") == "ACTIVE"
+        ]  # No point getting inactive accounts
 
 
 def _load_config(config_file):
@@ -328,12 +342,18 @@ def _load_config(config_file):
 def _validate_config(config, orgs):
     # Check if master account ID is a valid (looking) AWS account ID
     if not re.fullmatch(r"\d{12}", config.get("organizations_master_account_id", "")):
-        logger.error("master account ID should be 12 numeric characters, please check and try again")
+        logger.error(
+            "master account ID should be 12 numeric characters, please check and try again"
+        )
         return False
 
     # Check if the access role looks valid
-    if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_=.-]{0,63}", config.get("account_access_role", "")):
-        logger.error("role name provided is invalid - please see AWS documentation for valid role names")
+    if not re.fullmatch(
+        r"[a-zA-Z0-9][a-zA-Z0-9_=.-]{0,63}", config.get("account_access_role", "")
+    ):
+        logger.error(
+            "role name provided is invalid - please see AWS documentation for valid role names"
+        )
         return False
 
     # Check that the region is valid
@@ -360,7 +380,9 @@ def _validate_config(config, orgs):
 
         # If we specify an org name and there's more than one org with that name
         if org_name and org_names_match > 1:
-            logger.error(f"multiple orgs named {org_name} were found, please use org_id instead")
+            logger.error(
+                f"multiple orgs named {org_name} were found, please use org_id instead"
+            )
             return False
 
     # If we get here, everything should be OK
@@ -387,7 +409,9 @@ def _prepare_mapping_rules(mapping_rules, config, orgs, snyk):
                     rule["filter"].get("name_patterns", []),
                 )
             if rule.get("org_name"):
-                org_id = snyk.get_or_create_org_id(orgs, rule.get("org_name"), config.get("snyk_group_id"))
+                org_id = snyk.get_or_create_org_id(
+                    orgs, rule.get("org_name"), config.get("snyk_group_id")
+                )
             else:
                 org_id = rule["org_id"]
             mapping = MappingRule(filter, org_id, match_type)
@@ -395,7 +419,9 @@ def _prepare_mapping_rules(mapping_rules, config, orgs, snyk):
         logger.debug(f"loaded {len(loaded_mapping_rules)} mapping rules from config")
         return loaded_mapping_rules
     except KeyError:
-        raise MappingRuleException("Invalid mapping rules, please check and ensure your rules are valid")
+        raise MappingRuleException(
+            "Invalid mapping rules, please check and ensure your rules are valid"
+        )
 
 
 def _test_subject(subject, mapping_rules):
@@ -406,7 +432,9 @@ def _test_subject(subject, mapping_rules):
     :param mapping_rules: the list of all mapping rules
     :return: True if a match was found, False otherwise
     """
-    logger.debug(f"testing subject against {len(mapping_rules)} mapping rules [subject={subject}]")
+    logger.debug(
+        f"testing subject against {len(mapping_rules)} mapping rules [subject={subject}]"
+    )
     for rule in mapping_rules:
         if rule.is_match(subject):
             logger.debug("found match")
@@ -420,20 +448,24 @@ def main(
     debug: bool = False,
     ignore_existing: bool = False,
     no_dry_run: bool = False,
-    use_instance_metadata: bool = True
+    use_instance_metadata: bool = True,
 ):
     # Set the regions
     global AWS_REGIONS
     AWS_REGIONS = [
         region["RegionName"]
-        for region in _get_session(use_instance_metadata).client("ec2", region_name="us-east-1").describe_regions()["Regions"]
+        for region in _get_session(use_instance_metadata)
+        .client("ec2", region_name="us-east-1")
+        .describe_regions()["Regions"]
     ]
 
     # Print log to stdout and set level to debug if the user asks for it
     if debug:
         logger.setLevel(logging.DEBUG)
         handler = logging.StreamHandler(sys.stdout)
-        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
         handler.setFormatter(formatter)
         logger.addHandler(handler)
 
@@ -444,7 +476,9 @@ def main(
         sys.exit(EXIT_CONFIG_NOT_FOUND)
     if not (SNYK_TOKEN and AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY):
         logger.debug(os.environ)
-        logger.error("environment variables `SNYK_TOKEN`, `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` must be set")
+        logger.error(
+            "environment variables `SNYK_TOKEN`, `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` must be set"
+        )
         print(
             stylize(
                 "environment variables `SNYK_TOKEN`, `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` must be set",
@@ -479,11 +513,17 @@ def main(
 
     # Load mapping rules from the config
     try:
-        mapping_rules = _prepare_mapping_rules(config["account_org_mapping_rules"], config, orgs, snyk)
+        mapping_rules = _prepare_mapping_rules(
+            config["account_org_mapping_rules"], config, orgs, snyk
+        )
         print(stylize("Config file successfully loaded...", STYLE_SUCCESS))
     except (MappingRuleException, KeyError) as e:
-        logger.debug(f"could not read config file, please check your config - {str(config)}")
-        print(stylize(f"could not read config file, please check your config", STYLE_ERR))
+        logger.debug(
+            f"could not read config file, please check your config - {str(config)}"
+        )
+        print(
+            stylize(f"could not read config file, please check your config", STYLE_ERR)
+        )
         sys.exit(EXIT_MAPPING_RULE_LOAD_ERROR)
 
     # Pull down a list of accounts and then filter them based on our rules
@@ -528,7 +568,9 @@ def main(
                 )
                 if no_dry_run:
                     # Create a cloudformation template to deploy in to this account
-                    template = snyk.generate_snyk_cloud_aws_cfn_template(matched_rule.org_id)
+                    template = snyk.generate_snyk_cloud_aws_cfn_template(
+                        matched_rule.org_id
+                    )
 
                     # Assume a role in to the target account and deploy the cfn template
                     stack_name = STACK_NAME_TEMPLATE.format(account["Id"])
@@ -543,7 +585,9 @@ def main(
                         assumed_session = _get_session()
                     else:
                         assumed_session = aws.role_arn_to_session(
-                            RoleArn=ROLE_ARN_TEMPLATE.format(account["Id"], config["account_access_role"]),
+                            RoleArn=ROLE_ARN_TEMPLATE.format(
+                                account["Id"], config["account_access_role"]
+                            ),
                             RoleSessionName="SnykCloudDeploymentSession",
                         )
                         print(
@@ -565,7 +609,9 @@ def main(
                     )
 
                     # Wait for the template to finish deploying
-                    assumed_cfn_client.get_waiter("stack_create_complete").wait(StackName=stack_name)
+                    assumed_cfn_client.get_waiter("stack_create_complete").wait(
+                        StackName=stack_name
+                    )
 
                     # Get the role arn from the stack outputs
                     print(
@@ -588,8 +634,13 @@ def main(
                         + f"Found Snyk role {snyk_cloud_role_arn} in stack outputs, deploying Snyk Cloud environment..."
                     )
                     if snyk_cloud_role_arn:
-                        snyk.create_snyk_cloud_environment(matched_rule.org_id, snyk_cloud_role_arn)
-                        print(stylize(f"[{account['Id']}] ", STYLE_INFO) + stylize(f"...done", STYLE_SUCCESS))
+                        snyk.create_snyk_cloud_environment(
+                            matched_rule.org_id, snyk_cloud_role_arn
+                        )
+                        print(
+                            stylize(f"[{account['Id']}] ", STYLE_INFO)
+                            + stylize(f"...done", STYLE_SUCCESS)
+                        )
 
     # If we're running in dry run mode, then we should tell the user to run the no dry run in order to do it
     if not no_dry_run:
