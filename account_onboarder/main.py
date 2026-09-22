@@ -27,7 +27,6 @@ import typer
 import yaml
 from colored import stylize
 
-
 # Set up our logger
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -45,6 +44,7 @@ ROLE_ARN_TEMPLATE = "arn:aws:iam::{}:role/{}"
 STACK_NAME_TEMPLATE = "SnykCloudOnboarding-{}"
 
 # Constants for coloured output
+colored.set_tty_aware(False)
 STYLE_INFO = colored.fg("blue") + colored.attr("bold")
 STYLE_ERR = colored.fg("red") + colored.attr("bold")
 STYLE_WARN = colored.fg("yellow") + colored.attr("bold")

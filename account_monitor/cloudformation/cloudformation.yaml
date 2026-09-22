@@ -136,7 +136,7 @@ Resources:
       FunctionName:
         'Fn::Sub': '${LambdaName}'
       Description: Snyk Cloud AWS Account Monitor Function
-      Runtime: python3.9
+      Runtime: python3.10
       Code:
         S3Bucket: aws-account-monitor
         S3Key: lambda-account-monitor-package-v0.3.0.zip

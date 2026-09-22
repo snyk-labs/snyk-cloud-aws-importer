@@ -130,7 +130,7 @@ resource "aws_lambda_function" "snyk_cloud_monitor_function" {
     s3_key = "lambda-account-monitor-package-v0.3.0.zip"
     memory_size = 128
     role = "${aws_iam_role.lambda_role.arn}"
-    runtime = "python3.9"
+    runtime = "python3.10"
     timeout = 600
     environment {
         variables = {
