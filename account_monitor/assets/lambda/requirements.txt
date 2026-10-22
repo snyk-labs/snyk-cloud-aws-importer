@@ -12,7 +12,7 @@ s3transfer==0.6.0
 six==1.16.0
 typer==0.7.0
 urllib3==1.26.14
-black==22.12.0
+black==26.10.1
 boto3==1.26.55
 botocore==1.29.55
 certifi==2022.12.7
